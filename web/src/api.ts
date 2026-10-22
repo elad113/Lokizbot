@@ -2,11 +2,22 @@ const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'https://lokibot
 const OPENROUTER_KEY = (import.meta as any).env?.VITE_LOKIZON_AI_API_KEY || '';
 
 async function postBackend(path: string, body: any) {
-  const response = await fetch(API_BASE.replace(/\/$/, '') + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(API_BASE.replace(/\/$/, '') + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(path === '/api/images/generate' ? 150000 : 60000),
+      mode: 'cors',
+      cache: 'no-store',
+    });
+  } catch (e) {
+    const detail = e instanceof Error && e.name === 'TimeoutError'
+      ? 'The request timed out. The image service may be waking up; try again.'
+      : 'Could not reach LokiBot server at ' + API_BASE + '. Check that the backend is online and has LOKIZ_IMAGE_GEN configured.';
+    throw new Error(detail);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = typeof data?.error === 'string' ? data.error : 'Backend request failed (HTTP ' + response.status + ').';
