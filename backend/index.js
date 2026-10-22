@@ -53,4 +53,62 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+
+const languageMatchers = {
+  javascript: /nodejs/i, typescript: /typescript|deno/i, python: /cpython|python/i,
+  c: /^gcc|gcc.*c/i, cpp: /^g\+\+|clang\+\+/i, java: /openjdk|java/i,
+  csharp: /mono|csharp|dotnet/i, go: /^go-/i, rust: /^rust-/i, ruby: /^ruby-/i,
+  php: /^php-/i, bash: /bash/i, lua: /^lua-/i, perl: /^perl-/i, r: /^r-/i,
+  swift: /^swift-/i, kotlin: /kotlin/i, dart: /^dart-/i
+};
+let wandboxCompilers = { fetchedAt: 0, items: [] };
+async function getWandboxCompiler(language) {
+  const now = Date.now();
+  if (now - wandboxCompilers.fetchedAt > 60 * 60 * 1000 || !wandboxCompilers.items.length) {
+    const response = await fetch('https://wandbox.org/api/list.json', { signal: AbortSignal.timeout(12000) });
+    if (!response.ok) throw new Error('The code runner catalogue is temporarily unavailable (HTTP ' + response.status + ').');
+    wandboxCompilers.items = await response.json();
+    wandboxCompilers.fetchedAt = now;
+  }
+  const matcher = languageMatchers[language];
+  if (!matcher) throw new Error('This language is not supported by the current online runner.');
+  const all = wandboxCompilers.items.filter(item => item && item.name && item.language);
+  const candidates = all.filter(item => matcher.test(String(item.name)) || matcher.test(String(item.language)));
+  const preferred = candidates.find(item => /latest|stable/i.test(item.name)) || candidates[0];
+  if (!preferred) throw new Error('No available Wandbox compiler was found for ' + language + '.');
+  return preferred;
+}
+app.post('/api/run', async (req, res) => {
+  try {
+    const { language, code, stdin = '' } = req.body || {};
+    if (typeof code !== 'string' || !code.trim()) return res.status(400).json({ error: 'Enter code before running it.' });
+    if (code.length > 100000) return res.status(413).json({ error: 'Code is too large to run (100 KB maximum).' });
+    if (typeof stdin !== 'string' || stdin.length > 20000) return res.status(400).json({ error: 'Input is too large (20 KB maximum).' });
+    const compiler = await getWandboxCompiler(String(language || ''));
+    const response = await fetch('https://wandbox.org/api/compile.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        compiler: compiler.name, code, stdin, save: false,
+        'compiler-option-raw': '', 'runtime-option-raw': ''
+      }),
+      signal: AbortSignal.timeout(35000)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) return res.status(502).json({ error: payload.message || 'The online runner returned HTTP ' + response.status + '.' });
+    const output = [payload.program_message, payload.compiler_message].filter(Boolean).join('\n').trim();
+    const status = Number(payload.status);
+    return res.json({
+      output: output || (status === 0 ? 'Program finished successfully with no output.' : 'The program finished without output.'),
+      exitCode: Number.isFinite(status) ? status : 0,
+      compiler: compiler.name,
+      signal: payload.signal || null
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unexpected code runner error.';
+    const timeout = /timeout|abort/i.test(message);
+    return res.status(timeout ? 504 : 502).json({ error: timeout ? 'Code execution timed out. Try a smaller program.' : message.slice(0, 400) });
+  }
+});
+
 app.listen(port, '0.0.0.0', () => console.log(`LokiBot API listening on ${port}`));
