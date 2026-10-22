@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Brain, Check, Globe, X } from 'lucide-react';
 type Source = { title: string; url: string; snippet?: string };
 type Result = { summary: string; sources: Source[] };
-export default function DeepThinking() {
+export default function DeepThinking({ onOpen }: { onOpen?: () => void }) {
  const [open,setOpen]=useState(false);
  const [topic,setTopic]=useState('');
  const [busy,setBusy]=useState(false);
@@ -22,7 +22,7 @@ export default function DeepThinking() {
   finally{setBusy(false)}
  }
  return <>
- <button onClick={()=>setOpen(true)}><Brain size={16}/> Deep thinking <span className="deep-thinking-tag">120s</span></button>
+ <button onClick={()=>{setOpen(true);onOpen?.()}}><Brain size={16}/> Deep thinking <span className="deep-thinking-tag">120s</span></button>
  {open&&<div className="research-scrim" onClick={()=>{if(!busy)setOpen(false)}}><section className="research-modal" onClick={e=>e.stopPropagation()}>
  <div className="research-head"><div className="research-icon"><Brain size={22}/></div><div><h2>Deep thinking</h2><p>Search the web, compare sources and build a cited answer.</p></div><button className="icon-btn" disabled={busy} onClick={()=>setOpen(false)}><X size={19}/></button></div>
  { !result&&<><label className="research-label" htmlFor="deep-topic">What should I investigate?</label><textarea id="deep-topic" className="research-topic" rows={3} value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Ask a question or enter a topic…" disabled={busy}/>
