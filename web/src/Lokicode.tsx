@@ -153,7 +153,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
         </div>
       </header>
       {showProjects && <div className="lk-project-drawer"><div className="lk-drawer-head"><b><History size={16} /> Saved projects</b><button onClick={() => setShowProjects(false)}><X size={16} /></button></div>{saved.length ? saved.map(project => <button key={project.id} className="lk-project-item" onClick={() => loadProject(project)}><FileCode2 size={17} /><span><b>{project.title}</b><small>{languages.find(l => l.value === project.language)?.label || project.language} · {new Date(project.updated).toLocaleDateString()}</small></span><ChevronDown size={14} /></button>) : <p className="lk-empty">Saved projects stay on this device.</p>}</div>}
-      <main className="lk-main">
+      <main className="lk-main" tabIndex={0}>
         <section className="lk-intro"><div className="lk-eyebrow"><Sparkles size={14} /> AI CODING STUDIO</div><h1>Ideas into <span>working code.</span></h1><p>Describe what you want to build. LokiBot writes it, explains it, and lets you run it.</p></section>
         <section className="lk-request-card">
           <label htmlFor="lk-language">I want to code in</label>
