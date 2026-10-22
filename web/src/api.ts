@@ -41,6 +41,7 @@ async function request(path: string, body: any) {
   const system = [
     'You are LokiBot, a helpful, accurate, friendly AI assistant. Prefer concise, natural answers.',
     typeof personality === 'string' ? 'Personality: ' + personality.slice(0, 500) : '',
+    typeof alwaysInstructions === 'string' && alwaysInstructions.trim() ? 'Always follow these user instructions unless they conflict with safety or accuracy: ' + alwaysInstructions.slice(0, 2500) : '',
     typeof alwaysInstructions === 'string' ? 'User instructions that must be followed unless unsafe or impossible: ' + alwaysInstructions.slice(0, 2000) : '',
     crossChatMemory,
     mode === 'learn' ? 'Teach step by step and check understanding.' : '',
@@ -53,7 +54,7 @@ async function request(path: string, body: any) {
 
   const contentMessages: any[] = [
     { role: 'system', content: system },
-    ...messages.slice(-18).filter((m: any) => ['user', 'assistant'].includes(m?.role) && typeof m?.content === 'string')
+    ...messages.slice(-18).filter((m: any) => ['user', 'assistant', 'system'].includes(m?.role) && typeof m?.content === 'string').map((m: any) => ({ role: m.role, content: m.content }))
   ];
   if (image?.data && contentMessages.length) {
     const last = contentMessages[contentMessages.length - 1];
