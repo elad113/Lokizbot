@@ -18,7 +18,7 @@ app.get('/health', (_req, res) => res.json({ ok: true, service: 'lokibot-api', c
 app.post('/api/chat', async (req, res) => {
   try {
     if (!apiKey) return res.status(503).json({ error: 'AI backend is not configured. Add OPENROUTER_API_KEY (or GROQ_API_KEY) to the hosting service environment.' });
-    const { messages, personality, mode, image } = req.body || {};
+    const { messages, personality, mode, image, responseLength = 'short', thinkingLevel = 'medium', replyLanguage = 'auto', modelChoice = 'lokizenith-3.2' } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'messages must be a non-empty array.' });
     const safeMessages = messages.slice(-18).filter(m => ['user', 'assistant'].includes(m?.role) && typeof m?.content === 'string').map(m => ({ role: m.role, content: m.content.slice(0, 16000) }));
     if (!safeMessages.length) return res.status(400).json({ error: 'No valid chat messages were provided.' });
@@ -32,12 +32,16 @@ app.post('/api/chat', async (req, res) => {
       'You are LokiBot, a helpful, accurate, friendly AI assistant.',
       'Answer in the same language as the user. Prefer concise, useful answers unless detail is requested.',
       mode === 'learn' ? 'Teaching mode: guide step by step, check understanding, and explain concepts clearly.' : '',
-      typeof personality === 'string' ? `Personality preference: ${personality.slice(0, 500)}` : ''
+      typeof personality === 'string' ? `Personality preference: ${personality.slice(0, 500)}` : '',
+      `Answer length: ${['short','medium','long'].includes(responseLength) ? responseLength : 'short'}. Default to concise, plain-language answers; avoid unnecessary Markdown symbols and decorative formatting.`,
+      `Reasoning effort preference: ${['low','medium','high','extra-high'].includes(thinkingLevel) ? thinkingLevel : 'medium'}. Scale depth and verification to this preference, but never claim to have searched or checked sources unless actual source data is available.`,
+      `Preferred reply language: ${['Hebrew','English','French','Spanish','Arabic'].includes(replyLanguage) ? replyLanguage : 'match the user language'}.`,
+      `Selected product mode: ${modelChoice === 'zenith-3.5-ultra' ? 'Zenith 3.5 Ultra (premium behavior prompt; same configured provider unless a separate model is configured)' : 'Lokizenith 3.2'}.`
     ].filter(Boolean).join('\n');
     const upstream = await fetch(apiUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_ORIGIN || 'https://github.com/elad113/Lokizbot', 'X-Title': 'LokiBot' },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, ...safeMessages], temperature: 0.6, max_tokens: 1400 })
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, ...safeMessages], temperature: 0.6, max_tokens: responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650 })
     });
     const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
