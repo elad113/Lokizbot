@@ -116,3 +116,11 @@ export const image = {
     return { data: url.slice(comma + 1), mimeType: url.slice(5, url.indexOf(';')) || 'image/jpeg' };
   }
 };
+
+
+export const imageGeneration = {
+  async generate(prompt: string) {
+    const response = await postBackend('/api/images/generate', { prompt });
+    return response.data as { image?: string; mimeType?: string; revisedPrompt?: string };
+  }
+};
