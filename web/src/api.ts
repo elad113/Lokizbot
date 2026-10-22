@@ -144,7 +144,38 @@ export const image = {
 
 export const imageGeneration = {
   async generate(prompt: string) {
-    const response = await postBackend('/api/images/generate', { prompt });
-    return response.data as { image?: string; mimeType?: string; revisedPrompt?: string };
+    const url = API_BASE.replace(/\/$/, '') + '/api/images/generate';
+    let lastError: unknown;
+    // Render free services can take a moment to wake up; retry one network-level failure.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ prompt }),
+          signal: AbortSignal.timeout(150000),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const detail = typeof data?.error === 'string' ? data.error : 'Image API returned HTTP ' + response.status + '.';
+          throw new Error(detail);
+        }
+        if (!data?.image) throw new Error('The image server responded, but did not return image data.');
+        return data as { image?: string; mimeType?: string; revisedPrompt?: string };
+      } catch (error) {
+        lastError = error;
+        const message = error instanceof Error ? error.message : String(error);
+        // Retry only fetch/network failures and timeouts, not provider/API errors.
+        if (attempt === 0 && (/failed to fetch|networkerror|load failed|timeout|abort/i.test(message))) {
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          continue;
+        }
+        if (/failed to fetch|networkerror|load failed/i.test(message)) {
+          throw new Error('Cannot reach the LokiBot image server (' + url + '). Check that the backend is online and that LOKIZ_IMAGE_GEN is set in the backend host environment.');
+        }
+        throw error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('Image generation failed.');
   }
 };
