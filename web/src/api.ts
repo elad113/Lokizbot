@@ -1,4 +1,5 @@
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'https://lokizbot.onrender.com';
+const API_BASE_RAW = (import.meta as any).env?.VITE_API_BASE_URL || 'https://lokizbot.onrender.com';
+const API_BASE = String(API_BASE_RAW).replace('https://lokibot-api.onrender.com', 'https://lokizbot.onrender.com');
 const OPENROUTER_KEY = (import.meta as any).env?.VITE_LOKIZON_AI_API_KEY || '';
 
 async function postBackend(path: string, body: any) {
