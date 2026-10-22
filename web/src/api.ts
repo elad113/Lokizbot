@@ -91,8 +91,9 @@ async function request(path: string, body: any) {
       if (typeof answer === 'string' && answer.trim()) {
         const trimmed = answer.trim();
         const lastPrompt = String(messages[messages.length - 1]?.content || '');
-        const uiRequested = /recipe|meal plan|itinerary|travel plan|workout plan|checklist|schedule|compare|מתכון|מסלול|תוכנית אימון|רשימת משימות|השוואה/i.test(lastPrompt);
-        if (uiRequested) { try { const parsed = JSON.parse(trimmed); if (parsed && typeof parsed === 'object') return { data: { text: typeof parsed.text === 'string' ? parsed.text : 'Here is your guide.', interface: parsed.interface && typeof parsed.interface === 'object' ? { type: String(parsed.interface.type || 'plan'), title: String(parsed.interface.title || 'Your guide'), subtitle: String(parsed.interface.subtitle || ''), items: Array.isArray(parsed.interface.items) ? parsed.interface.items.slice(0, 12) : [] } : undefined, model: data?.model || 'openrouter/auto' } }; } catch {} }
+        const uiRequested = /recipe|meal plan|itinerary|travel plan|workout plan|checklist|schedule|compare|מתכון|מסלול|תוכנית אימון|רשימת משימות|השוואה|interactive interface|ui preview|ממשק אינטראקטיבי|תצוגה מקדימה/i.test(lastPrompt);
+        const quizRequested = /quiz|test|multiple.choice|חידון|בוחן|מבחן/i.test(lastPrompt);
+        if (uiRequested || quizRequested) { try { const parsed = JSON.parse(trimmed); if (parsed && typeof parsed === 'object') return { data: { text: typeof parsed.text === 'string' ? parsed.text : (parsed.interface ? 'Interactive preview' : 'Your activity is ready.'), quiz: Array.isArray(parsed.quiz) ? parsed.quiz.slice(0, 20) : undefined, flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards.slice(0, 40) : undefined, interface: parsed.interface && typeof parsed.interface === 'object' ? { type: String(parsed.interface.type || 'plan'), title: String(parsed.interface.title || 'Your guide'), subtitle: String(parsed.interface.subtitle || ''), items: Array.isArray(parsed.interface.items) ? parsed.interface.items.slice(0, 12) : [] } : undefined, model: data?.model || 'openrouter/auto' } }; } catch {} }
         return { data: { text: trimmed, model: data?.model || 'openrouter/auto' } };
       }
       openRouterError = 'OpenRouter returned an empty answer.';
