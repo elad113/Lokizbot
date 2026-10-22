@@ -1882,3 +1882,54 @@ button:disabled {
 .effort-select-wrap { display:flex; align-items:center; gap:5px; padding:7px 9px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--muted); font-size:11px; }
 .settings-select { width:100%; margin:7px 0 18px; padding:11px 12px; border:1px solid #e7e0f2; border-radius:10px; color:var(--ink); background:var(--surface); }
 @media(max-width:650px) { .effort-select-wrap { max-width:92px; } .effort-select-wrap select { max-width:60px; } .model-select-wrap select { max-width:100px; } }
+
+html, body, #root { width:100%; height:100%; overflow:hidden; overscroll-behavior:none; }
+.app-shell { height:100dvh; min-height:0; overflow:hidden; width:100%; }
+.main-area { min-height:0; height:100dvh; overflow:hidden; display:flex; flex-direction:column; }
+.conversation-view { min-height:0; flex:1; overflow-y:auto; overscroll-behavior:contain; }
+.chat-list { overscroll-behavior:contain; }
+.topbar,.bottom-composer-wrap { flex-shrink:0; }
+.delete-chat { color:#ef4444 !important; }
+.pin-chat { border:0; background:transparent; color:var(--muted); padding:5px; display:inline-flex; align-items:center; }
+.pin-chat.pinned { color:#f59e0b; }
+.history-section-title { padding:12px 13px 6px; font-size:10px; font-weight:800; letter-spacing:.12em; color:var(--muted); }
+.profile-topline { display:flex; align-items:center; gap:10px; padding:8px 18px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.7); min-height:54px; flex-shrink:0; }
+.profile-topline .avatar { width:32px; height:32px; }
+.profile-topline b { font-size:13px; }
+.profile-topline small { display:block; color:var(--muted); font-size:11px; }
+.profile-topline button { margin-left:auto; border:1px solid var(--line); background:var(--surface); border-radius:10px; padding:7px 10px; color:var(--ink); }
+.image-studio-card { border:1px solid var(--line); border-radius:20px; padding:14px; margin:12px 0; background:linear-gradient(135deg,rgba(126,87,255,.08),rgba(241,126,184,.09)); }
+.image-studio-card label { display:block; font-size:12px; font-weight:700; margin-bottom:8px; }
+.image-studio-input { width:100%; border:1px solid var(--line); border-radius:12px; padding:12px; background:var(--surface); color:var(--ink); resize:vertical; }
+.image-studio-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; }
+.image-studio-actions button { border:0; border-radius:12px; padding:10px 13px; background:var(--grad); color:white; font-weight:700; display:flex; gap:7px; align-items:center; }
+.image-square-placeholder { width:min(100%,340px); aspect-ratio:1; border-radius:20px; position:relative; overflow:hidden; background:linear-gradient(135deg,#201638,#4b347c,#d36bba); display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px; color:white; margin:10px 0; isolation:isolate; }
+.image-square-placeholder:before,.image-square-placeholder:after { content:''; position:absolute; inset:-40%; background:conic-gradient(from 0deg,transparent,rgba(255,255,255,.48),transparent 35%); animation:imageSweep 3s linear infinite; z-index:-1; }
+.image-square-placeholder:after { animation-duration:5s; animation-direction:reverse; opacity:.55; }
+.image-square-placeholder .image-shimmer { position:absolute; inset:0; background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.16) 45%,transparent 65%); transform:translateX(-100%); animation:shimmerPass 1.8s ease-in-out infinite; }
+.image-square-placeholder b { font-size:15px; }
+.image-square-placeholder small { opacity:.8; }
+.generated-image-card { max-width:420px; border-radius:18px; overflow:hidden; border:1px solid var(--line); margin:12px 0; background:var(--surface); }
+.generated-image-card img { width:100%; display:block; cursor:zoom-in; aspect-ratio:1; object-fit:cover; }
+.generated-image-actions { display:flex; flex-wrap:wrap; gap:7px; padding:9px; }
+.generated-image-actions button { display:flex; align-items:center; gap:5px; border:1px solid var(--line); border-radius:10px; padding:7px 9px; background:var(--surface); color:var(--ink); font-size:12px; }
+.ui-interface-card { margin:14px 0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:var(--surface); box-shadow:0 12px 32px rgba(90,65,150,.08); }
+.ui-interface-head { padding:17px; background:linear-gradient(115deg,rgba(140,104,242,.16),rgba(238,129,194,.13)); }
+.ui-interface-head small { text-transform:uppercase; letter-spacing:.1em; font-weight:800; color:var(--purple); font-size:10px; }
+.ui-interface-head h3 { margin:6px 0 4px; font-size:19px; }
+.ui-interface-head p { margin:0; color:var(--muted); font-size:13px; }
+.ui-interface-items { display:grid; gap:0; }
+.ui-interface-item { padding:13px 16px; border-top:1px solid var(--line); }
+.ui-interface-item b { display:block; font-size:14px; margin-bottom:5px; }
+.ui-interface-item p { margin:0; font-size:13px; line-height:1.55; white-space:pre-wrap; }
+.ui-interface-item span { display:inline-block; margin-top:7px; font-size:11px; color:var(--purple); font-weight:800; }
+.confirm-delete-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+.confirm-delete-actions button { border-radius:10px; padding:10px 14px; border:1px solid var(--line); background:var(--surface); color:var(--ink); }
+.confirm-delete-actions .danger { background:#dc2626; color:white; border-color:#dc2626; }
+.image-fullscreen { position:fixed; inset:0; z-index:1000; background:rgba(10,8,18,.96); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:18px; color:white; }
+.image-fullscreen img { max-width:100%; max-height:calc(100dvh - 140px); object-fit:contain; }
+.image-fullscreen-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:14px; }
+.image-fullscreen-actions button { display:flex; gap:6px; align-items:center; border:1px solid #5b536c; border-radius:10px; padding:10px 12px; background:#29223a; color:white; }
+@keyframes imageSweep { to { transform:rotate(360deg); } }
+@keyframes shimmerPass { 60%,100% { transform:translateX(100%); } }
+@media (max-width:640px) { .profile-topline { padding:7px 12px; } .image-square-placeholder { width:100%; max-width:310px; } .image-fullscreen { padding:10px; } }
