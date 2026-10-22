@@ -200,6 +200,7 @@ function App() {
   const [callName, setCallName] = useState(localStorage.getItem('lokizon_call_name') || '');
   const [account, setAccount] = useState<{email:string;name:string}|null>(() => { try { const x=localStorage.getItem('lokibot_account'); return x ? JSON.parse(x) : null; } catch { return null; } });
   const [authOpen, setAuthOpen] = useState(false);
+  const [expandedResources, setExpandedResources] = useState<Record<string, boolean>>({});
   const [authMode, setAuthMode] = useState<'signup'|'login'>('signup');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -816,6 +817,7 @@ function App() {
                     >
                       {m.text}
                     </div>
+                    {m.role === 'assistant' && (() => { const urls = Array.from(new Set(m.text.match(/https?:\/\/[^\s)\]>]+/g) || [])).slice(0,8); const cited = urls.length > 0; const uncertain = /I’m not sure|I'm not sure|cannot verify|can't verify|ייתכן|לא בטוח|לא ניתן לאמת/i.test(m.text); const score = Math.max(25, Math.min(98, 58 + urls.length * 8 - (uncertain ? 18 : 0))); const meterColor = score >= 80 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#ef4444'; return <div className="resources-trust-row"><button className="resources-toggle" onClick={() => setExpandedResources(p => ({...p,[m.id]:!p[m.id]}))}><Globe size={14}/> Resources {cited ? '('+urls.length+')' : ''} <ChevronDown size={12}/></button><div className="trust-meter" title="Heuristic confidence indicator, not a fact-check"><span>Trust estimate</span><div className="trust-track"><i style={{width:score+'%',background:meterColor}}/></div><b style={{color:meterColor}}>{score}%</b></div>{expandedResources[m.id] && <div className="resources-list" style={{width:'100%'}}>{cited ? urls.map((url,i)=><a href={url} key={i} target="_blank" rel="noreferrer">{url}</a>) : <small>No source links were included in this answer. Ask LokiBot to provide sources for factual claims.</small>}<small>Trust estimate is a rough text-based signal, not independent verification.</small></div>}</div>; })()}
                     {m.role === 'assistant' && (
                       <div className="message-actions">
                         <button
