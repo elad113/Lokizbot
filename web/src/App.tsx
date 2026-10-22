@@ -66,6 +66,8 @@ type Msg = {
   text: string;
   image?: string;
   kind?: string;
+  fileName?: string;
+  fileText?: string;
   interface?: { type: string; title: string; subtitle?: string; items: { title: string; description: string; meta?: string }[] };
 };
 type Chat = { id: string; title: string; updated: number; messages: Msg[]; pinned?: boolean };
@@ -171,6 +173,11 @@ function App() {
   const [query, setQuery] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
+  const [attachmentText, setAttachmentText] = useState('');
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [openResources, setOpenResources] = useState<string|null>(null);
+  const [longMemory, setLongMemory] = useState(localStorage.getItem('lokibot_long_memory') || '');
+  useEffect(() => { localStorage.setItem('lokibot_long_memory', longMemory); }, [longMemory]);
   const [toast, setToast] = useState('');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
@@ -328,20 +335,22 @@ function App() {
     // Image generation has been removed; image attachments remain available for analysis.
     let imageUrl = preview;
     let prepared: any = null;
+    let fileContext = attachmentText;
     if (attachment) {
       try {
-        prepared = await imageTools.resizeIfNeeded(attachment);
-        imageUrl = preview;
-      } catch {
-        notify('Could not prepare image');
-        return;
-      }
+        if (attachment.type.startsWith('image/')) { prepared = await imageTools.resizeIfNeeded(attachment); imageUrl = preview; }
+        else if (attachment.size <= 5000000 && /\\.(txt|md|csv|json|xml|html?|css|js|jsx|ts|tsx|py|java|c|cpp|h|sql|log|yaml|yml)$/i.test(attachment.name)) { fileContext = await attachment.text(); }
+        else { throw new Error('This file format is not supported for text extraction yet. Try TXT, CSV, JSON, source code, or an image.'); }
+      } catch (e) { notify(e instanceof Error ? e.message : 'Could not read this file'); return; }
     }
+    const promptWithFile = fileContext ? userText + '\\n\\n[Attached file: ' + (attachment?.name || 'text file') + ']\\n' + fileContext.slice(0, 30000) : userText;
     const userMsg: Msg = {
       id: uid(),
       role: 'user',
-      text: userText,
+      text: userText + (attachment ? '\\n📎 ' + attachment.name : ''),
       image: imageUrl || undefined,
+      fileName: attachment?.name,
+      fileText: fileContext || undefined,
     };
     const updatedMsgs = [...(chat.messages || []), userMsg];
     patchChat(chat.id, c => ({
@@ -358,9 +367,7 @@ function App() {
     setQuiz(null);
     try {
       const response = await api.post('/api/chat', {
-        messages: updatedMsgs
-          .slice(-18)
-          .map(m => ({ role: m.role, content: m.text })),
+        messages: [...updatedMsgs.slice(-18).map(m => ({ role: m.role, content: m.text })), ...(longMemory.trim() ? [{ role: 'system', content: 'Long-term memory from previous chats. Use when relevant:\\n' + longMemory.slice(0, 5000) }] : []), ...(fileContext ? [{ role: 'user', content: promptWithFile }] : [])],
         personality,
         alwaysInstructions: alwaysInstructions + (callName.trim() ? '\nAlways address the user as: ' + callName.trim() : ''),
         mode,
@@ -430,6 +437,8 @@ function App() {
   }
   function togglePin(id: string) { patchChat(id, c => ({ ...c, pinned: !c.pinned })); notify('Chat pin updated'); }
   function startImageGeneration() { const p = imagePrompt.trim(); if (!p) { notify('Describe the image first'); return; } void send('/image ' + p); }
+  function extractResourceLinks(text: string) { return Array.from(new Set((text.match(/https?:\\/\\/[^\\s)\\]}>,]+/g) || []).map(x => x.replace(/[.,;]+$/, ''))).slice(0, 8); }
+  function trustScore(text: string) { const links = extractResourceLinks(text); let score = links.length ? 78 + Math.min(18, links.length * 4) : 58; if (/I am not sure|I can’t verify|I cannot verify|may be outdated|לא בטוח|לא ניתן לאמת|ייתכן שטעיתי/i.test(text)) score -= 12; if (/medical|legal|financial|רפוא|משפטי|פיננסי/i.test(text)) score = Math.min(score, 72); return Math.max(20, Math.min(98, score)); }
   const filtered = chats.filter(c => c.title.toLowerCase().includes(query.toLowerCase()));
   const pinnedChats = filtered.filter(c => c.pinned);
   const regularChats = filtered.filter(c => !c.pinned);
@@ -717,8 +726,7 @@ function App() {
               )}
               <div className="composer-footer">
                 <div className="composer-tools">
-                  <button className="tool-btn" onClick={() => fileRef.current?.click()}><ImagePlus size={16} /><span>Attach image</span></button>
-                  <button className="tool-btn" onClick={() => { setImageStudioOpen(v => !v); setImagePrompt(''); }}><WandSparkles size={16} /><span>Create image</span></button>
+                  <div className="plus-menu-wrap"><button className="tool-btn plus-main" aria-label="More actions" onClick={() => setPlusMenuOpen(v => !v)}><Plus size={19}/><span>Add</span></button>{plusMenuOpen && <div className="plus-menu"><button onClick={() => {fileRef.current?.click();setPlusMenuOpen(false)}}><Paperclip size={16}/> Attach file or image</button><button onClick={() => {setImageStudioOpen(v=>!v);setImagePrompt('');setPlusMenuOpen(false)}}><WandSparkles size={16}/> Create image</button><button onClick={() => {setMode(mode==='learn'?'chat':'learn');setPlusMenuOpen(false)}}><Brain size={16}/> {mode==='learn'?'Exit learn mode':'Learn mode'}</button><button onClick={() => {setShowTools(v=>!v);setPlusMenuOpen(false)}}><Sparkles size={16}/> Tools</button><button onClick={() => {setShowSettings(true);setPlusMenuOpen(false)}}><Settings2 size={16}/> Settings & memory</button></div></div>
                   <button
                     className={
                       'tool-btn ' + (mode === 'learn' ? 'active-tool' : '')
@@ -818,6 +826,8 @@ function App() {
                       {m.text}
                     </div>
                     {m.role === 'assistant' && (() => { const urls = Array.from(new Set(m.text.match(/https?:\/\/[^\s)\]>]+/g) || [])).slice(0,8); const cited = urls.length > 0; const uncertain = /I’m not sure|I'm not sure|cannot verify|can't verify|ייתכן|לא בטוח|לא ניתן לאמת/i.test(m.text); const score = Math.max(25, Math.min(98, 58 + urls.length * 8 - (uncertain ? 18 : 0))); const meterColor = score >= 80 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#ef4444'; return <div className="resources-trust-row"><button className="resources-toggle" onClick={() => setExpandedResources(p => ({...p,[m.id]:!p[m.id]}))}><Globe size={14}/> Resources {cited ? '('+urls.length+')' : ''} <ChevronDown size={12}/></button><div className="trust-meter" title="Heuristic confidence indicator, not a fact-check"><span>Trust estimate</span><div className="trust-track"><i style={{width:score+'%',background:meterColor}}/></div><b style={{color:meterColor}}>{score}%</b></div>{expandedResources[m.id] && <div className="resources-list" style={{width:'100%'}}>{cited ? urls.map((url,i)=><a href={url} key={i} target="_blank" rel="noreferrer">{url}</a>) : <small>No source links were included in this answer. Ask LokiBot to provide sources for factual claims.</small>}<small>Trust estimate is a rough text-based signal, not independent verification.</small></div>}</div>; })()}
+                    {m.role === 'assistant' && <div className="trust-resources-row"><span className="trust-meter" title="Estimated indicator, not a guarantee"><span className="trust-meter-fill" style={{width:trustScore(m.text)+'%',background:trustScore(m.text)>=82?'#16a34a':trustScore(m.text)>=65?'#f59e0b':'#ef4444'}}/><b>Trust {trustScore(m.text)}%</b></span><button className="resources-btn" onClick={() => setOpenResources(openResources===m.id?null:m.id)}><Globe size={13}/> Resources {extractResourceLinks(m.text).length ? '('+extractResourceLinks(m.text).length+')' : ''}</button></div>}
+                    {m.role === 'assistant' && openResources===m.id && <div className="resources-panel">{extractResourceLinks(m.text).length ? extractResourceLinks(m.text).map(url=><a key={url} href={url} target="_blank" rel="noreferrer">{url}</a>) : <span>No links in this answer. Ask LokiBot to provide sources.</span>}</div>}
                     {m.role === 'assistant' && (
                       <div className="message-actions">
                         <button
