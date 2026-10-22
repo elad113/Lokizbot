@@ -642,9 +642,7 @@ function App() {
             {!collapsed && 'Personalize Lokizon'}
           </button>
           <button className="profile-row" onClick={() => setShowProfile(true)}>
-            <div className="avatar">
-              {displayName.slice(0, 1).toUpperCase()}
-            </div>
+            <div className="avatar">{localStorage.getItem('lokibot_avatar') ? <img src={localStorage.getItem('lokibot_avatar') || ''} alt="Profile" /> : displayName.slice(0, 1).toUpperCase()}</div>
             {!collapsed && (
               <>
                 <div className="profile-info">
@@ -661,7 +659,7 @@ function App() {
         <div className="mobile-scrim" onClick={() => setMobileNav(false)} />
       )}
       <main className="main-area">
-        <div className="profile-topline"><div className="avatar">{displayName.slice(0, 1).toUpperCase()}</div><div className="profile-identity"><b>{account?.name || displayName}</b><small>{account?.email || (callName ? 'AI calls you ' + callName : 'Guest account')}</small></div><div className="usage-meter" title={`${usage.used.toLocaleString()} tokens used of ${usageLimit.toLocaleString()}`}><div className="usage-meter-top"><b>{isUnlimited ? 'Usage remaining: Unlimited' : 'Usage remaining: ' + usageRemaining.toLocaleString()}</b><span>{isUnlimited ? 'UNLIMITED' : usagePercent + '% used'}</span></div><div className="usage-track"><i style={{width:usagePercent+'%',background:usageColor}} /></div></div>{!account && <button className="account-cta" onClick={() => {setAuthMode('signup');setAuthOpen(true)}}>Sign up / Log in</button>}<button onClick={() => setShowProfile(true)}><SlidersHorizontal size={14} /> Profile</button></div>
+        <div className="profile-topline"><div className="avatar">{localStorage.getItem('lokibot_avatar') ? <img src={localStorage.getItem('lokibot_avatar') || ''} alt="Profile" /> : displayName.slice(0, 1).toUpperCase()}</div><div className="profile-identity"><b>{account?.name || displayName}</b><small>{account?.email || (callName ? 'AI calls you ' + callName : 'Guest account')}</small></div><div className="usage-meter" title={`${usage.used.toLocaleString()} tokens used of ${usageLimit.toLocaleString()}`}><div className="usage-meter-top"><b>{isUnlimited ? 'Usage remaining: Unlimited' : 'Usage remaining: ' + usageRemaining.toLocaleString()}</b><span>{isUnlimited ? 'UNLIMITED' : usagePercent + '% used'}</span></div><div className="usage-track"><i style={{width:usagePercent+'%',background:usageColor}} /></div></div>{!account && <button className="account-cta" onClick={() => {setAuthMode('signup');setAuthOpen(true)}}>Sign up / Log in</button>}<button onClick={() => setShowProfile(true)}><SlidersHorizontal size={14} /> Profile</button></div>
         <header className="topbar">
           <div className="top-left">
             <button
