@@ -13,12 +13,37 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : true }));
 app.use(express.json({ limit: '8mb' }));
 
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'lokibot-api', configured: Boolean(apiKey) }));
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'lokibot-api', configured: Boolean(apiKey), imageGenerationConfigured: Boolean(process.env.LOKIZ_IMAGE_GEN) }));
+
+app.post('/api/images/generate', async (req, res) => {
+  try {
+    const imageKey = process.env.LOKIZ_IMAGE_GEN;
+    if (!imageKey) return res.status(503).json({ error: 'Image generation is not configured on the API host. Add LOKIZ_IMAGE_GEN to the backend environment.' });
+    const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim().slice(0, 4000) : '';
+    if (!prompt) return res.status(400).json({ error: 'Describe the image you want to create.' });
+    const upstream = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + imageKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-image-1', prompt, size: '1024x1024', quality: 'high', output_format: 'png' }),
+      signal: AbortSignal.timeout(120000)
+    });
+    const payload = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const message = payload?.error?.message || 'Image provider returned HTTP ' + upstream.status;
+      return res.status(upstream.status === 429 ? 429 : 502).json({ error: String(message).slice(0, 500) });
+    }
+    const first = payload?.data?.[0];
+    if (!first?.b64_json) return res.status(502).json({ error: 'Image provider returned no image data.' });
+    return res.json({ image: first.b64_json, mimeType: 'image/png', revisedPrompt: first.revised_prompt || prompt });
+  } catch (error) {
+    return res.status(/timeout|abort/i.test(String(error)) ? 504 : 502).json({ error: error instanceof Error ? error.message : 'Image generation failed.' });
+  }
+});
 
 app.post('/api/chat', async (req, res) => {
   try {
     if (!apiKey) return res.status(503).json({ error: 'AI backend is not configured. Add OPENROUTER_API_KEY (or GROQ_API_KEY) to the hosting service environment.' });
-    const { messages, personality, mode, image, responseLength = 'short', thinkingLevel = 'medium', replyLanguage = 'auto', modelChoice = 'lokizenith-3.2' } = req.body || {};
+    const { messages, personality, alwaysInstructions, mode, image, responseLength = 'short', thinkingLevel = 'medium', replyLanguage = 'auto', modelChoice = 'lokizenith-3.2' } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'messages must be a non-empty array.' });
     const safeMessages = messages.slice(-18).filter(m => ['user', 'assistant'].includes(m?.role) && typeof m?.content === 'string').map(m => ({ role: m.role, content: m.content.slice(0, 16000) }));
     if (!safeMessages.length) return res.status(400).json({ error: 'No valid chat messages were provided.' });
@@ -33,6 +58,7 @@ app.post('/api/chat', async (req, res) => {
       'Prefer concise, useful answers unless detail is requested. Use plain, natural wording and avoid decorative Markdown symbols.',
       mode === 'learn' ? 'Teaching mode: guide step by step, check understanding, and explain concepts clearly.' : '',
       typeof personality === 'string' ? `Personality preference: ${personality.slice(0, 500)}` : '',
+      typeof alwaysInstructions === 'string' && alwaysInstructions.trim() ? `Persistent user instructions (follow consistently unless they conflict with safety or system requirements): ${alwaysInstructions.slice(0, 1500)}` : '',
       `Answer length: ${['short','medium','long'].includes(responseLength) ? responseLength : 'short'}. Default to concise, plain-language answers; avoid unnecessary Markdown symbols and decorative formatting.`,
       `Reasoning effort preference: ${['low','medium','high','extra-high'].includes(thinkingLevel) ? thinkingLevel : 'medium'}. Scale depth and verification to this preference, but never claim to have searched or checked sources unless actual source data is available.`,
       `Preferred reply language: ${['Hebrew','English','French','Spanish','Arabic'].includes(replyLanguage) ? 'Always answer only in ' + replyLanguage + ', even if the user writes in another language.' : 'match the language used by the user'}.`,
@@ -41,7 +67,8 @@ app.post('/api/chat', async (req, res) => {
     const selectedModel = modelChoice === 'zenith-3.5-ultra' ? (process.env.ZENITH35_MODEL || model) : model;
     const lastPrompt = safeMessages[safeMessages.length - 1]?.content;
     const interactiveRequested = typeof lastPrompt === 'string' && /quiz|multiple.choice test|flashcards|study cards|מבחן|בוחן|כרטיסיות/i.test(lastPrompt);
-    const interactiveInstruction = interactiveRequested ? ' If the user requests a quiz/test, return ONLY valid JSON with shape {"text":"short intro","quiz":[{"q":"question","options":["A","B","C","D"],"answer":0,"why":"short explanation"}],"flashcards":null}. If they request flashcards, use {"text":"short intro","quiz":null,"flashcards":[{"q":"question","a":"answer"}]}. For ordinary chat, answer normally. Do not wrap JSON in markdown fences.' : '';
+    const uiRequested = typeof lastPrompt === 'string' && /recipe|meal plan|itinerary|travel plan|workout plan|step.by.step|checklist|schedule|compare|מתכון|מסלול|תוכנית אימון|רשימת משימות|השוואה/i.test(lastPrompt);
+    const interactiveInstruction = interactiveRequested ? ' If the user requests a quiz/test, return ONLY valid JSON with shape {"text":"short intro","quiz":[{"q":"question","options":["A","B","C","D"],"answer":0,"why":"short explanation"}],"flashcards":null}. If they request flashcards, use {"text":"short intro","quiz":null,"flashcards":[{"q":"question","a":"answer"}]}. For ordinary chat, answer normally. Do not wrap JSON in markdown fences.' : uiRequested ? ' If an additional interactive UI would genuinely help (for example a recipe, itinerary, checklist, schedule, workout or comparison), return ONLY valid JSON with shape {"text":"helpful concise explanation","interface":{"type":"recipe|plan|checklist|comparison|steps","title":"short title","subtitle":"useful summary or time","items":[{"title":"item heading","description":"clear details","meta":"optional short label"}]}}. Include 3-12 useful items. For ordinary questions, answer normally. Do not wrap JSON in markdown fences.' : '';
     const upstream = await fetch(apiUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_ORIGIN || 'https://github.com/elad113/Lokizbot', 'X-Title': 'LokiBot' },
@@ -56,10 +83,10 @@ app.post('/api/chat', async (req, res) => {
     const text = payload?.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || !text.trim()) return res.status(502).json({ error: 'The AI provider returned an empty answer.' });
     const trimmed = text.trim();
-    if (interactiveRequested) {
+    if (interactiveRequested || uiRequested) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === 'object') return res.json({ text: typeof parsed.text === 'string' ? parsed.text : 'Here is your interactive activity.', quiz: Array.isArray(parsed.quiz) ? parsed.quiz.slice(0, 20) : undefined, flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards.slice(0, 40) : undefined, model: payload?.model || selectedModel });
+        if (parsed && typeof parsed === 'object') return res.json({ text: typeof parsed.text === 'string' ? parsed.text : 'Here is your interactive activity.', quiz: Array.isArray(parsed.quiz) ? parsed.quiz.slice(0, 20) : undefined, flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards.slice(0, 40) : undefined, interface: parsed.interface && typeof parsed.interface === 'object' ? { type: String(parsed.interface.type || 'plan').slice(0, 30), title: String(parsed.interface.title || 'Your guide').slice(0, 100), subtitle: String(parsed.interface.subtitle || '').slice(0, 180), items: Array.isArray(parsed.interface.items) ? parsed.interface.items.slice(0, 12).map(item => ({ title: String(item?.title || '').slice(0, 100), description: String(item?.description || '').slice(0, 700), meta: String(item?.meta || '').slice(0, 80) })) : [] } : undefined, model: payload?.model || selectedModel });
       } catch {}
     }
     return res.json({ text: trimmed, model: payload?.model || selectedModel });
