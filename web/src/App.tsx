@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api, image as imageTools } from './api';
+import { api, image as imageTools, imageGeneration } from './api';
 import {
   Sparkles,
   Send,
@@ -66,8 +66,9 @@ type Msg = {
   text: string;
   image?: string;
   kind?: string;
+  interface?: { type: string; title: string; subtitle?: string; items: { title: string; description: string; meta?: string }[] };
 };
-type Chat = { id: string; title: string; updated: number; messages: Msg[] };
+type Chat = { id: string; title: string; updated: number; messages: Msg[]; pinned?: boolean };
 const tools = [
   ['🧠', 'Explain anything', 'Explain a difficult topic simply'],
   ['📚', 'Study mode', 'Teach me step by step'],
@@ -99,6 +100,16 @@ const tools = [
   ['📨', 'Email helper', 'Draft a clear email'],
   ['📊', 'Data explainer', 'Understand numbers and charts'],
   ['⭐', 'Daily challenge', 'Get a quick daily challenge'],
+  ['🖼️', 'AI image creator', 'Create original images from a description'],
+  ['🍝', 'Recipe planner', 'Build a recipe with timing and ingredients'],
+  ['🧳', 'Trip planner', 'Create a practical itinerary'],
+  ['⚖️', 'Decision matrix', 'Compare options with clear criteria'],
+  ['🗒️', 'Meeting notes', 'Turn notes into decisions and action items'],
+  ['💰', 'Budget planner', 'Organize a budget and spending plan'],
+  ['🏋️', 'Workout builder', 'Create a balanced workout plan'],
+  ['🌿', 'Habit tracker', 'Design a simple habit system'],
+  ['🎙️', 'Interview practice', 'Practice interview questions and feedback'],
+  ['📄', 'Resume helper', 'Improve a resume or application'],
 ];
 const starters = [
   {
@@ -180,6 +191,13 @@ function App() {
   const [quizChoice, setQuizChoice] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [imageStudioOpen, setImageStudioOpen] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageFullScreen, setImageFullScreen] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [alwaysInstructions, setAlwaysInstructions] = useState(localStorage.getItem('lokizon_instructions') || '');
+  const [callName, setCallName] = useState(localStorage.getItem('lokizon_call_name') || '');
   const [displayName, setDisplayName] = useState(
     localStorage.getItem('lokizon_name') || 'Explorer'
   );
@@ -200,6 +218,16 @@ function App() {
   useEffect(() => {
     localStorage.setItem('lokizon_personality', personality);
   }, [personality]);
+  useEffect(() => { localStorage.setItem('lokizon_instructions', alwaysInstructions); }, [alwaysInstructions]);
+  useEffect(() => { localStorage.setItem('lokizon_call_name', callName); }, [callName]);
+  useEffect(() => {
+    const preventZoom = (event: WheelEvent) => { if (event.ctrlKey || event.metaKey) event.preventDefault(); };
+    const preventGesture = (event: Event) => event.preventDefault();
+    document.addEventListener('wheel', preventZoom, { passive: false });
+    document.addEventListener('gesturestart', preventGesture as EventListener, { passive: false });
+    document.addEventListener('gesturechange', preventGesture as EventListener, { passive: false });
+    return () => { document.removeEventListener('wheel', preventZoom); document.removeEventListener('gesturestart', preventGesture as EventListener); document.removeEventListener('gesturechange', preventGesture as EventListener); };
+  }, []);
   useEffect(() => {
     localStorage.setItem('lokizon_dark', String(dark));
     document.documentElement.dataset.dark = String(dark);
@@ -263,6 +291,27 @@ function App() {
     }
     const userText =
       text.trim() || 'Please analyze this image and explain what you see.';
+    if (userText.startsWith('/image ')) {
+      const prompt = userText.slice(7).trim();
+      if (!prompt) { notify('Describe the image you want to create'); return; }
+      const imageChat = chat;
+      const pendingId = uid();
+      const userMsg: Msg = { id: uid(), role: 'user', text: 'Create image: ' + prompt };
+      patchChat(imageChat.id, c => ({ ...c, title: c.messages.length === 0 ? ('Image: ' + prompt.slice(0, 30)) : c.title, updated: Date.now(), messages: [...c.messages, userMsg, { id: pendingId, role: 'assistant', text: 'Creating your image…', kind: 'image-pending' }] }));
+      setInput(''); setBusy(true); setGeneratingImage(true); setImageStudioOpen(false);
+      try {
+        const result = await imageGeneration.generate(prompt);
+        if (!result.image) throw new Error('The image service returned no image.');
+        const src = 'data:' + (result.mimeType || 'image/png') + ';base64,' + result.image;
+        patchChat(imageChat.id, c => ({ ...c, updated: Date.now(), messages: c.messages.map(m => m.id === pendingId ? { ...m, text: result.revisedPrompt || prompt, image: src, kind: 'image-generated' } : m) }));
+        notify('Your image is ready');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Image generation failed';
+        patchChat(imageChat.id, c => ({ ...c, messages: c.messages.map(m => m.id === pendingId ? { ...m, text: 'Image generation failed: ' + message, kind: 'image-error' } : m) }));
+        notify('Could not create image');
+      } finally { setBusy(false); setGeneratingImage(false); }
+      return;
+    }
     // Image generation has been removed; image attachments remain available for analysis.
     let imageUrl = preview;
     let prepared: any = null;
@@ -300,6 +349,7 @@ function App() {
           .slice(-18)
           .map(m => ({ role: m.role, content: m.text })),
         personality,
+        alwaysInstructions: alwaysInstructions + (callName.trim() ? '\nAlways address the user as: ' + callName.trim() : ''),
         mode,
         thinkingLevel, responseLength, replyLanguage, modelChoice,
         image: prepared
@@ -311,6 +361,7 @@ function App() {
         error?: string;
         flashcards?: { q: string; a: string }[];
         quiz?: { q: string; options: string[]; answer: number; why: string }[];
+        interface?: { type: string; title: string; subtitle?: string; items: { title: string; description: string; meta?: string }[] };
       };
       const reply =
         data.text ||
@@ -326,6 +377,7 @@ function App() {
             role: 'assistant',
             text: reply,
             kind: reply.includes('FLASHCARDS_JSON:') ? 'flashcards' : undefined,
+            interface: data.interface,
           },
         ],
       }));
@@ -358,10 +410,14 @@ function App() {
   function removeChat(id: string) {
     setChats(p => p.filter(c => c.id !== id));
     if (active === id) setActive(null);
+    setConfirmDelete(null);
+    notify('Chat permanently deleted');
   }
-  const filtered = chats.filter(c =>
-    c.title.toLowerCase().includes(query.toLowerCase())
-  );
+  function togglePin(id: string) { patchChat(id, c => ({ ...c, pinned: !c.pinned })); notify('Chat pin updated'); }
+  function startImageGeneration() { const p = imagePrompt.trim(); if (!p) { notify('Describe the image first'); return; } void send('/image ' + p); }
+  const filtered = chats.filter(c => c.title.toLowerCase().includes(query.toLowerCase()));
+  const pinnedChats = filtered.filter(c => c.pinned);
+  const regularChats = filtered.filter(c => !c.pinned);
   const visibleTools = tools.filter(t =>
     (t[1] + ' ' + t[2]).toLowerCase().includes(toolSearch.toLowerCase())
   );
@@ -502,7 +558,8 @@ function App() {
           )}
         </div>
         <div className="chat-list">
-          {filtered.map(c => (
+          {pinnedChats.length > 0 && !collapsed && <div className="history-section-title">PINNED</div>}
+          {pinnedChats.map(c => (
             <div
               className={'chat-item ' + (c.id === active ? 'active' : '')}
               key={c.id}
@@ -520,17 +577,13 @@ function App() {
                 {!collapsed && <span>{c.title}</span>}
               </button>
               {!collapsed && (
-                <button
-                  className="delete-chat"
-                  title="Delete chat"
-                  onClick={() => removeChat(c.id)}
-                >
-                  <Trash2 size={13} />
-                </button>
+                <button className={'pin-chat ' + (c.pinned ? 'pinned' : '')} title={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => togglePin(c.id)}><Star size={13} fill={c.pinned ? 'currentColor' : 'none'} /></button>
+                <button className="delete-chat" title="Delete chat" onClick={() => setConfirmDelete(c.id)}><Trash2 size={13} /></button>
               )}
             </div>
           ))}
-          {!filtered.length && !collapsed && (
+          {regularChats.length > 0 && pinnedChats.length > 0 && !collapsed && <div className="history-section-title">YOUR CHATS</div>}
+          {regularChats.map(c => (
             <p className="empty-history">
               Your conversations will appear here.
             </p>
@@ -561,6 +614,7 @@ function App() {
         <div className="mobile-scrim" onClick={() => setMobileNav(false)} />
       )}
       <main className="main-area">
+        <div className="profile-topline"><div className="avatar">{displayName.slice(0, 1).toUpperCase()}</div><div><b>{displayName}</b><small>{callName ? 'AI calls you ' + callName : 'Your personal AI space'}</small></div><button onClick={() => setShowProfile(true)}><SlidersHorizontal size={14} /> Profile</button></div>
         <header className="topbar">
           <div className="top-left">
             <button
@@ -613,6 +667,7 @@ function App() {
               Your ideas, your learning, your world. Let's make something
               wonderful.
             </p>
+            {imageStudioOpen && <div className="image-studio-card"><label>Describe the image LokiBot should create</label><textarea className="image-studio-input" rows={3} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A cinematic fantasy city at sunset, detailed textures, square composition…" /><div className="image-studio-actions"><small>Uses LOKIZ_IMAGE_GEN only</small><button onClick={startImageGeneration} disabled={generatingImage || !imagePrompt.trim()}><WandSparkles size={16} /> Create image</button></div></div>}
             <div className="composer home-composer">
               <textarea
                 rows={2}
@@ -645,13 +700,8 @@ function App() {
               )}
               <div className="composer-footer">
                 <div className="composer-tools">
-                  <button
-                    className="tool-btn"
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    <ImagePlus size={16} />
-                    <span>Attach image</span>
-                  </button>
+                  <button className="tool-btn" onClick={() => fileRef.current?.click()}><ImagePlus size={16} /><span>Attach image</span></button>
+                  <button className="tool-btn" onClick={() => { setImageStudioOpen(v => !v); setImagePrompt(''); }}><WandSparkles size={16} /><span>Create image</span></button>
                   <button
                     className={
                       'tool-btn ' + (mode === 'learn' ? 'active-tool' : '')
@@ -717,7 +767,7 @@ function App() {
                 className="all-tools"
                 onClick={() => setShowAllTools(true)}
               >
-                View all 30 <span>↗</span>
+                View all 40 <span>↗</span>
               </button>            </div>
           </section>
         ) : (
@@ -739,7 +789,9 @@ function App() {
                       </div>
                     )}
 
-                    {m.image && <img className="message-image" src={m.image} alt="AI generated or attached image" />}
+                    {m.kind === 'image-pending' ? <div className="image-square-placeholder"><div className="image-shimmer" /><Sparkles size={34} /><b>Creating your image</b><small>Painting pixels · adding details · refining</small></div> : null}
+                    {m.image && (m.kind === 'image-generated' ? <div className="generated-image-card"><img src={m.image} alt="AI-generated image" onClick={() => setImageFullScreen(m.image!)} /><div className="generated-image-actions"><button onClick={() => setImageFullScreen(m.image!)}><Search size={13} /> Open</button><button onClick={() => { const a=document.createElement('a'); a.href=m.image!; a.download='lokibot-image.png'; a.click(); }}><Download size={13} /> Download</button><button onClick={async () => { try { const blob=await (await fetch(m.image!)).blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]:blob})]); notify('Image copied'); } catch { notify('Copy image is not supported here'); } }}><Copy size={13} /> Copy</button><button onClick={async () => { try { const blob=await (await fetch(m.image!)).blob(); const file=new File([blob],'lokibot-image.png',{type:blob.type}); if(navigator.share && navigator.canShare?.({files:[file]})) await navigator.share({files:[file],title:'LokiBot image'}); else { const a=document.createElement('a'); a.href=m.image!; a.download='lokibot-image.png'; a.click(); notify('Sharing unavailable; image downloaded'); } } catch { notify('Could not share image'); } }}><Share2 size={13} /> Share</button><button onClick={() => { setImagePrompt('Edit this image: ' + m.text); setImageStudioOpen(true); notify('Edit the prompt, then create a new version'); }}><WandSparkles size={13} /> Edit</button></div></div> : <img className="message-image" src={m.image} alt="Attached image" />)}
+                    {m.interface && <div className="ui-interface-card"><div className="ui-interface-head"><small>{m.interface.type || 'Interactive guide'}</small><h3>{m.interface.title}</h3><p>{m.interface.subtitle}</p></div><div className="ui-interface-items">{m.interface.items.map((item,i) => <div className="ui-interface-item" key={i}><b>{i+1}. {item.title}</b><p>{item.description}</p>{item.meta && <span>{item.meta}</span>}</div>)}</div></div>}
                     <div
                       className={
                         'message-text ' + m.role + ' ' +
@@ -909,6 +961,7 @@ function App() {
             (messages.length === 0 && !activeChat ? 'home-bottom' : '')
           }
         >
+          {imageStudioOpen && <div className="image-studio-card"><label>Describe the image LokiBot should create</label><textarea className="image-studio-input" rows={3} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="Describe style, subject, lighting and composition…" /><div className="image-studio-actions"><small>Uses LOKIZ_IMAGE_GEN only</small><button onClick={startImageGeneration} disabled={generatingImage || !imagePrompt.trim()}><WandSparkles size={16} /> Create image</button></div></div>}
           <div className="composer">
             <textarea
               rows={1}
@@ -941,13 +994,8 @@ function App() {
             )}
             <div className="composer-footer">
               <div className="composer-tools">
-                <button
-                  className="tool-btn"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <ImagePlus size={16} />
-                  <span>Image</span>
-                </button>
+                <button className="tool-btn" onClick={() => fileRef.current?.click()}><ImagePlus size={16} /><span>Image</span></button>
+                <button className="tool-btn" onClick={() => setImageStudioOpen(v => !v)}><WandSparkles size={16} /><span>Create image</span></button>
                 <button
                   className="tool-btn"
                   onClick={() => setMode(mode === 'learn' ? 'chat' : 'learn')}
@@ -1015,6 +1063,10 @@ function App() {
             <select className="settings-select" value={responseLength} onChange={e => setResponseLength(e.target.value)}><option value="short">Short (default)</option><option value="medium">Medium</option><option value="long">Long</option></select>
             <label className="field-label">REPLY LANGUAGE</label>
             <select className="settings-select" value={replyLanguage} onChange={e => setReplyLanguage(e.target.value)}><option value="auto">Match my message</option><option value="Hebrew">עברית</option><option value="English">English</option><option value="French">Français</option><option value="Spanish">Español</option><option value="Arabic">العربية</option></select>
+            <label className="field-label">WHAT SHOULD THE AI CALL YOU?</label>
+            <input className="profile-input" value={callName} onChange={e => setCallName(e.target.value)} placeholder="Your preferred name or nickname" maxLength={40} />
+            <label className="field-label">ALWAYS FOLLOW THESE INSTRUCTIONS</label>
+            <textarea className="settings-textarea" rows={3} value={alwaysInstructions} onChange={e => setAlwaysInstructions(e.target.value)} placeholder="Always answer in Hebrew, use a friendly tone, explain step by step…" />
             <label className="field-label">PERSONALITY</label>
             <textarea
               className="settings-textarea"
@@ -1069,6 +1121,8 @@ function App() {
                 className="primary-btn"
                 onClick={() => {
                   localStorage.setItem('lokizon_personality', personality);
+                  localStorage.setItem('lokizon_instructions', alwaysInstructions);
+                  localStorage.setItem('lokizon_call_name', callName);
                   localStorage.setItem('lokizon_theme', theme);
                   localStorage.setItem('lokibot_length', responseLength);
                   localStorage.setItem('lokibot_reply_language', replyLanguage);
@@ -1121,6 +1175,8 @@ function App() {
           </div>
         </div>
       )}
+      {confirmDelete && <div className="modal-backdrop" onClick={() => setConfirmDelete(null)}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-head"><div><div className="modal-icon" style={{background:'#fee2e2',color:'#dc2626'}}><Trash2 size={19} /></div><h2>Delete this chat forever?</h2><p>This conversation and its messages will be permanently removed from this device. This cannot be undone.</p></div><button className="icon-btn" onClick={() => setConfirmDelete(null)}><X size={19} /></button></div><div className="confirm-delete-actions"><button onClick={() => setConfirmDelete(null)}>Cancel</button><button className="danger" onClick={() => removeChat(confirmDelete)}>Yes, delete forever</button></div></div></div>}
+      {imageFullScreen && <div className="image-fullscreen" onClick={() => setImageFullScreen(null)}><button style={{position:'absolute',top:14,right:14}} onClick={() => setImageFullScreen(null)}><X size={20} /> Close</button><img src={imageFullScreen} alt="Full-screen generated image" onClick={e => e.stopPropagation()} /><div className="image-fullscreen-actions" onClick={e => e.stopPropagation()}><button onClick={() => { const a=document.createElement('a'); a.href=imageFullScreen; a.download='lokibot-image.png'; a.click(); }}><Download size={15} /> Download</button><button onClick={async () => { try { const blob=await (await fetch(imageFullScreen)).blob(); const file=new File([blob],'lokibot-image.png',{type:blob.type}); if(navigator.share && navigator.canShare?.({files:[file]})) await navigator.share({files:[file],title:'LokiBot image'}); else notify('Sharing is not supported on this device'); } catch { notify('Could not share image'); } }}><Share2 size={15} /> Share</button><button onClick={async () => { try { const blob=await (await fetch(imageFullScreen)).blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]:blob})]); notify('Image copied'); } catch { notify('Copy image is not supported here'); } }}><Copy size={15} /> Copy</button><button onClick={() => { setImagePrompt('Edit this image: '); setImageStudioOpen(true); setImageFullScreen(null); }}><WandSparkles size={15} /> Edit</button></div></div>}
       {(showTools || showAllTools) && (
         <div
           className="modal-backdrop"
@@ -1143,7 +1199,7 @@ function App() {
                 <h2>
                   {showAllTools ? 'Your magic toolkit' : 'What shall we make?'}
                 </h2>
-                <p>30 tiny superpowers, ready when you are.</p>
+                <p>40 practical superpowers, ready when you are.</p>
               </div>
               <button
                 className="icon-btn"
