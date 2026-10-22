@@ -380,7 +380,7 @@ function App() {
         data.error ||
         'I could not get a response. Please try again.';
       const tokenEstimate = Math.max(1, Math.ceil((userText.length + reply.length + updatedMsgs.slice(-18).reduce((n,m)=>n+m.text.length,0)) / 3.7));
-      setUsage(prev => ({ used: Math.min(usageLimit, prev.used + tokenEstimate), resetAt: prev.resetAt || Date.now() }));
+      setUsage(prev => { const used = Math.min(usageLimit, prev.used + tokenEstimate); return { used, resetAt: used >= usageLimit ? (prev.resetAt || Date.now()) : prev.resetAt }; });
       patchChat(chat.id, c => ({
         ...c,
         updated: Date.now(),
