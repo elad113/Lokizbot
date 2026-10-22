@@ -1225,16 +1225,9 @@ function App() {
                   className="tool-card"
                   key={t[1]}
                   onClick={() => {
+                    if (t[1] === 'AI image creator') { setImageStudioOpen(true); setShowTools(false); setShowAllTools(false); setMobileNav(false); return; }
                     chooseTool(toolPrompt(t[1]));
-                    if (
-                      [
-                        'Flashcards',
-                        'Quiz maker',
-                        'Study mode',
-                        'Summarize text',
-                      ].includes(t[1])
-                    )
-                      setMode('learn');
+                    if (['Flashcards','Quiz maker','Study mode','Summarize text'].includes(t[1])) setMode('learn');
                   }}
                 >
                   <span className="tool-emoji">{t[0]}</span>
