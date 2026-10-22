@@ -732,23 +732,16 @@ function App() {
               )}
               <div className="composer-footer">
                 <div className="composer-tools">
-                  <div className="plus-menu-wrap"><button className="tool-btn plus-main" aria-label="More actions" onClick={() => setPlusMenuOpen(v => !v)}><Plus size={19}/><span>Add</span></button>{plusMenuOpen && <div className="plus-menu"><button onClick={() => {fileRef.current?.click();setPlusMenuOpen(false)}}><Paperclip size={16}/> Attach file or image</button><button onClick={() => {setImageStudioOpen(v=>!v);setImagePrompt('');setPlusMenuOpen(false)}}><WandSparkles size={16}/> Create image</button><button onClick={() => {setMode(mode==='learn'?'chat':'learn');setPlusMenuOpen(false)}}><Brain size={16}/> {mode==='learn'?'Exit learn mode':'Learn mode'}</button><button onClick={() => {setShowTools(v=>!v);setPlusMenuOpen(false)}}><Sparkles size={16}/> Tools</button><button onClick={() => {setShowSettings(true);setPlusMenuOpen(false)}}><Settings2 size={16}/> Settings & memory</button></div></div>
-                  <button
-                    className={
-                      'tool-btn ' + (mode === 'learn' ? 'active-tool' : '')
-                    }
-                    onClick={() => setMode(mode === 'learn' ? 'chat' : 'learn')}
-                  >
-                    <Brain size={16} />
-                    <span>Learn</span>
-                  </button>
-                  <button
-                    className="tool-btn"
-                    onClick={() => setShowTools(!showTools)}
-                  >
-                    <Plus size={16} />
-                    <span>Tools</span>
-                  </button>
+                  <div className="plus-menu-wrap">
+                    <button className="tool-btn plus-main" aria-label="More actions" onClick={() => setPlusMenuOpen(v => !v)}><Plus size={19}/><span>Add</span></button>
+                    {plusMenuOpen && <div className="plus-menu">
+                      <button onClick={() => {fileRef.current?.click();setPlusMenuOpen(false)}}><Paperclip size={16}/> Attach file or image</button>
+                      <button onClick={() => {setImageStudioOpen(v=>!v);setImagePrompt('');setPlusMenuOpen(false)}}><WandSparkles size={16}/> Create image</button>
+                      <button onClick={() => {setMode(mode==='learn'?'chat':'learn');setPlusMenuOpen(false)}}><Brain size={16}/> {mode==='learn'?'Exit learn mode':'Learn mode'}</button>
+                      <button onClick={() => {setShowTools(v=>!v);setPlusMenuOpen(false)}}><Sparkles size={16}/> Tools</button>
+                      <button onClick={() => {setShowSettings(true);setPlusMenuOpen(false)}}><Settings2 size={16}/> Settings &amp; memory</button>
+                    </div>}
+                  </div>
                 </div>
                 <button
                   className="send-btn"
