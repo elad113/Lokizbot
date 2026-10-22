@@ -72,7 +72,7 @@ app.post('/api/chat', async (req, res) => {
 const languageMatchers = {
   javascript: /nodejs/i, typescript: /typescript|deno/i, python: /cpython|python/i,
   c: /^gcc|gcc.*c/i, cpp: /^g\+\+|clang\+\+/i, java: /openjdk|java/i,
-  csharp: /mono|csharp|dotnet/i, go: /^go-/i, rust: /^rust-/i, ruby: /^ruby-/i,
+  csharp: /mono|csharp|dotnet|c#/i, go: /^go-/i, rust: /^rust-/i, ruby: /^ruby-/i,
   php: /^php-/i, bash: /bash/i, lua: /^lua-/i, perl: /^perl-/i, r: /^r-/i,
   swift: /^swift-/i, kotlin: /kotlin/i, dart: /^dart-/i
 };
