@@ -1,0 +1,56 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+
+const app = express();
+const port = Number(process.env.PORT || 8787);
+const apiKey = process.env.OPENROUTER_API_KEY || process.env.LOKIZON_AI_API_KEY || process.env.GROQ_API_KEY;
+const model = process.env.OPENROUTER_MODEL || (process.env.GROQ_API_KEY && !process.env.OPENROUTER_API_KEY ? 'llama-3.3-70b-versatile' : 'openai/gpt-4o-mini');
+const apiUrl = process.env.AI_API_URL || (process.env.GROQ_API_KEY && !process.env.OPENROUTER_API_KEY ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions');
+
+app.disable('x-powered-by');
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(cors({ origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : true }));
+app.use(express.json({ limit: '8mb' }));
+
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'lokibot-api', configured: Boolean(apiKey) }));
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    if (!apiKey) return res.status(503).json({ error: 'AI backend is not configured. Add OPENROUTER_API_KEY (or GROQ_API_KEY) to the hosting service environment.' });
+    const { messages, personality, mode, image } = req.body || {};
+    if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'messages must be a non-empty array.' });
+    const safeMessages = messages.slice(-18).filter(m => ['user', 'assistant'].includes(m?.role) && typeof m?.content === 'string').map(m => ({ role: m.role, content: m.content.slice(0, 16000) }));
+    if (!safeMessages.length) return res.status(400).json({ error: 'No valid chat messages were provided.' });
+    if (image?.data && image?.mimeType && safeMessages[safeMessages.length - 1].role === 'user') {
+      safeMessages[safeMessages.length - 1].content = [
+        { type: 'text', text: safeMessages[safeMessages.length - 1].content },
+        { type: 'image_url', image_url: { url: `data:${String(image.mimeType).slice(0,80)};base64,${String(image.data).slice(0, 7_000_000)}` } }
+      ];
+    }
+    const system = [
+      'You are LokiBot, a helpful, accurate, friendly AI assistant.',
+      'Answer in the same language as the user. Prefer concise, useful answers unless detail is requested.',
+      mode === 'learn' ? 'Teaching mode: guide step by step, check understanding, and explain concepts clearly.' : '',
+      typeof personality === 'string' ? `Personality preference: ${personality.slice(0, 500)}` : ''
+    ].filter(Boolean).join('\n');
+    const upstream = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_ORIGIN || 'https://github.com/elad113/Lokizbot', 'X-Title': 'LokiBot' },
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, ...safeMessages], temperature: 0.6, max_tokens: 1400 })
+    });
+    const payload = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const message = payload?.error?.message || payload?.message || `AI provider returned HTTP ${upstream.status}`;
+      const status = upstream.status === 429 ? 429 : upstream.status === 401 || upstream.status === 403 ? 502 : 502;
+      return res.status(status).json({ error: message.slice(0, 500) });
+    }
+    const text = payload?.choices?.[0]?.message?.content;
+    if (typeof text !== 'string' || !text.trim()) return res.status(502).json({ error: 'The AI provider returned an empty answer.' });
+    return res.json({ text: text.trim(), model: payload?.model || model });
+  } catch (error) {
+    return res.status(500).json({ error: error instanceof Error ? error.message : 'Unexpected backend error.' });
+  }
+});
+
+app.listen(port, '0.0.0.0', () => console.log(`LokiBot API listening on ${port}`));
