@@ -48,7 +48,8 @@ async function request(path: string, body: any) {
     'Answer length: ' + (['short', 'medium', 'long'].includes(responseLength) ? responseLength : 'short') + '.',
     'Reasoning depth preference: ' + (['low', 'medium', 'high', 'extra-high'].includes(thinkingLevel) ? thinkingLevel : 'medium') + '.',
     'Reply language: ' + (['Hebrew', 'English', 'French', 'Spanish', 'Arabic'].includes(replyLanguage) ? 'always answer only in ' + replyLanguage : 'match the user language') + '.',
-    'If asked for quizzes or flashcards, provide clearly numbered questions/cards and answers.',
+    'If asked for a quiz or test, return ONLY valid JSON with shape {"text":"short intro","quiz":[{"q":"question","options":["A","B","C","D"],"answer":0,"why":"brief explanation"}]}. If asked for flashcards, return ONLY valid JSON with shape {"text":"short intro","flashcards":[{"q":"question","a":"answer"}]}. Never put answers in a quiz intro or reveal them before a user selects an option.',
+    'For factual questions that require research or current information, include a Sources section with real direct URLs to relevant authoritative sources. Never invent a source, URL, citation, or numeric trust score. If you cannot verify a source, say so.',
     /recipe|meal plan|itinerary|travel plan|workout plan|checklist|schedule|compare|מתכון|מסלול|תוכנית אימון|רשימת משימות|השוואה/i.test(String(messages[messages.length - 1]?.content || '')) ? 'If a helpful interactive interface fits the request, return ONLY JSON: {"text":"short explanation","interface":{"type":"recipe|plan|checklist|comparison|steps","title":"title","subtitle":"summary","items":[{"title":"heading","description":"details","meta":"optional short label"}]}} with 3-12 items. For ordinary questions answer normally.' : ''
   ].filter(Boolean).join('\n');
 
