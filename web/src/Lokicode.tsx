@@ -35,6 +35,16 @@ const getError = (e: unknown) => {
   const err = e as { response?: { data?: { error?: string } }; message?: string };
   return err?.response?.data?.error || err?.message || 'Something went wrong. Please try again.';
 };
+function escapeHtml(value: string) { return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function highlightCode(value: string) {
+  const escaped = escapeHtml(value);
+  return escaped.replace(/(\/\/[^\n]*|#[^\n]*|\b(?:const|let|var|function|return|if|else|for|while|class|new|import|from|export|async|await|def|print|True|False|None|public|static|void|int|string|using|namespace|package|func|fn|mut|use|struct|impl)\b|\b\d+(?:\.\d+)?\b|&quot;[^&]*?&quot;|&#39;.*?&#39;)/g, token => {
+    if (/^(const|let|var|function|return|if|else|for|while|class|new|import|from|export|async|await|def|print|True|False|None|public|static|void|int|string|using|namespace|package|func|fn|mut|use|struct|impl)$/.test(token)) return '<span class="tok-keyword">' + token + '</span>';
+    if (/^\d/.test(token)) return '<span class="tok-number">' + token + '</span>';
+    if (/^\/\//.test(token) || /^#/.test(token)) return '<span class="tok-comment">' + token + '</span>';
+    return '<span class="tok-string">' + token + '</span>';
+  });
+}
 function extractCode(text: string) {
   const match = text.match(/```(?:[a-zA-Z0-9_+#.-]+)?\s*\n([\s\S]*?)```/);
   if (match) return { code: match[1].trim(), summary: text.slice(0, match.index).trim() || 'Generated code is ready. Review it, then run it.' };
@@ -75,7 +85,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
     setOutput('Run your code to see output here.');
     try {
       const instruction = [
-        'You are Lokicode, a senior software engineer inside LokiBot.',
+        'You are LokiBot, a senior software engineer working in the Lokicode coding studio.',
         'Build the complete, working solution requested below in the selected language. Do not omit important parts, use pseudocode, or replace code with ellipses.',
         'First give a concise summary in the user\'s language, then output exactly one fenced code block with the full source code.',
         'For HTML mode, return a single self-contained HTML document with inline CSS and JavaScript; make it responsive, attractive, and interactive.',
@@ -108,8 +118,8 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
         return;
       }
       const response = await api.post('/api/run', { language, code, stdin });
-      const data = response.data as { output?: string; error?: string; exitCode?: number };
-      setOutput((data.output || data.error || 'Program finished.') + (typeof data.exitCode === 'number' && data.exitCode !== 0 ? '\n\nExit code: ' + data.exitCode : ''));
+      const data = response.data as { output?: string; error?: string; exitCode?: number; compiler?: string };
+      setOutput((data.output || data.error || 'Program finished.') + (data.compiler ? '\n\nCompiler: ' + data.compiler : '') + (typeof data.exitCode === 'number' && data.exitCode !== 0 ? '\n\nExit code: ' + data.exitCode : ''));
       setRunError(false);
     } catch (e) { setOutput(getError(e)); setRunError(true); }
     finally { setRunning(false); }
@@ -134,7 +144,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
     <div className={'lokicode-shell ' + (dark ? 'lokicode-dark' : '')}>
       <header className="lokicode-topbar">
         <button className="lk-back" onClick={onBack}><ArrowLeft size={18} /> <span>Back to LokiBot</span></button>
-        <div className="lk-brand"><div className="lk-brand-icon"><Code2 size={20} /></div><div><b>Lokicode</b><small>Build something brilliant</small></div></div>
+        <div className="lk-brand"><div className="lk-brand-icon"><Code2 size={20} /></div><div><b>LokiBot <span className="lk-brand-sub">· Loki</span></b><small>Lokicode · Build something brilliant</small></div></div>
         <div className="lk-top-actions">
           <button className="lk-secondary" onClick={() => setShowProjects(!showProjects)}><History size={16} /> Projects <span>{saved.length}</span></button>
           <button className="lk-secondary" onClick={saveProject}><Save size={16} /> Save</button>
@@ -142,7 +152,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
       </header>
       {showProjects && <div className="lk-project-drawer"><div className="lk-drawer-head"><b><History size={16} /> Saved projects</b><button onClick={() => setShowProjects(false)}><X size={16} /></button></div>{saved.length ? saved.map(project => <button key={project.id} className="lk-project-item" onClick={() => loadProject(project)}><FileCode2 size={17} /><span><b>{project.title}</b><small>{languages.find(l => l.value === project.language)?.label || project.language} · {new Date(project.updated).toLocaleDateString()}</small></span><ChevronDown size={14} /></button>) : <p className="lk-empty">Saved projects stay on this device.</p>}</div>}
       <main className="lk-main">
-        <section className="lk-intro"><div className="lk-eyebrow"><Sparkles size={14} /> AI CODING STUDIO</div><h1>Ideas into <span>working code.</span></h1><p>Describe what you want to build. Lokicode writes it, explains it, and lets you run it.</p></section>
+        <section className="lk-intro"><div className="lk-eyebrow"><Sparkles size={14} /> AI CODING STUDIO</div><h1>Ideas into <span>working code.</span></h1><p>Describe what you want to build. LokiBot writes it, explains it, and lets you run it.</p></section>
         <section className="lk-request-card">
           <label htmlFor="lk-language">I want to code in</label>
           <div className="lk-language-wrap"><Braces size={18} /><select id="lk-language" value={language} onChange={e => setLanguage(e.target.value)}>{languages.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select><ChevronDown size={15} /></div>
@@ -156,7 +166,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
           {busy && !code ? <div className="lk-code-loading"><div className="lk-loader-orb"><Code2 size={28} /></div><b>Crafting your solution</b><span>Planning · writing · checking the details</span><div className="lk-loading-bars"><i /><i /><i /><i /></div></div> : <>
             <div className="lk-summary"><div><Sparkles size={16} /><b>Build summary</b></div><p>{summary}</p></div>
             <div className="lk-tabs"><button className={view === 'code' ? 'active' : ''} onClick={() => setView('code')}><Code2 size={15} /> Code</button><button className={view === 'result' ? 'active' : ''} onClick={() => setView('result')}><Terminal size={15} /> Run result</button><span className="lk-tab-spacer" /><button onClick={async () => { try { await navigator.clipboard.writeText(code); notify('Code copied'); } catch { notify('Clipboard unavailable'); } }}><Copy size={14} /> Copy code</button><button onClick={downloadCode}><Download size={14} /> Download</button><button onClick={generate}><RotateCcw size={14} /> Regenerate</button></div>
-            {view === 'code' ? <div className="lk-editor"><div className="lk-line-numbers">{code.split('\n').map((_, i) => <span key={i}>{i + 1}</span>)}</div><textarea aria-label="Editable source code" spellCheck={false} value={code} onChange={e => setCode(e.target.value)} /></div> : <div className="lk-result-view">
+            {view === 'code' ? <div className="lk-editor"><div className="lk-line-numbers">{code.split('\n').map((_, i) => <span key={i}>{i + 1}</span>)}</div><div className="lk-editor-stage"><pre className="lk-code-highlight" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlightCode(code) + (code.endsWith('\n') ? ' ' : '') }} /><textarea aria-label="Editable source code" spellCheck={false} value={code} onChange={e => setCode(e.target.value)} onScroll={e => { const pre = e.currentTarget.previousElementSibling as HTMLElement | null; if (pre) { pre.scrollTop = e.currentTarget.scrollTop; pre.scrollLeft = e.currentTarget.scrollLeft; } }} /></div></div> : <div className="lk-result-view">
               {webMode ? <div className="lk-web-preview-head"><span><span className="lk-live-dot" /> Live web preview</span><button onClick={() => setView('code')}><Code2 size={14} /> Back to code</button></div> : <><label htmlFor="lk-stdin">Program input (stdin) · optional</label><textarea id="lk-stdin" className="lk-stdin" value={stdin} onChange={e => setStdin(e.target.value)} placeholder="Type input here, one value per line…" /><div className="lk-terminal-head"><Terminal size={15} /> Output console <button onClick={() => setOutput('')}><X size={13} /> Clear</button></div><pre className={'lk-output ' + (runError ? 'error' : '')}>{running ? 'Running your code…' : output}</pre></>}
               {webMode && <iframe className="lk-preview-frame" title="Your running web app" sandbox="allow-scripts" srcDoc={previewHtml} />}
             </div>}
