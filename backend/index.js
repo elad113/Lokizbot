@@ -53,8 +53,10 @@ app.post('/api/chat', async (req, res) => {
         { type: 'image_url', image_url: { url: `data:${String(image.mimeType).slice(0,80)};base64,${String(image.data).slice(0, 7_000_000)}` } }
       ];
     }
+    const codeMode = mode === 'code';
     const system = [
       'You are LokiBot, a helpful, accurate, friendly AI assistant.',
+      codeMode ? 'You are also acting as a principal software engineer and test engineer. Deliver complete, request-specific, runnable code. Plan architecture and requirements, handle edge cases, validation, errors, security, and responsive/accessibility details where relevant. Never use pseudocode, TODO placeholders, ellipses, fake implementations, or short generic snippets when a full implementation is requested. Include all necessary files and run/test instructions for multi-file projects. Review for undefined names, missing functions, syntax mistakes and incomplete branches. Never claim tests were executed unless actually executed.' : '',
       'Prefer concise, useful answers unless detail is requested. Use plain, natural wording and avoid decorative Markdown symbols.',
       mode === 'learn' ? 'Teaching mode: guide step by step, check understanding, and explain concepts clearly.' : '',
       typeof personality === 'string' ? `Personality preference: ${personality.slice(0, 500)}` : '',
@@ -72,7 +74,7 @@ app.post('/api/chat', async (req, res) => {
     const upstream = await fetch(apiUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_ORIGIN || 'https://github.com/elad113/Lokizbot', 'X-Title': 'LokiBot' },
-      body: JSON.stringify({ model: selectedModel, messages: [{ role: 'system', content: system + interactiveInstruction }, ...safeMessages], temperature: 0.6, max_tokens: responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650 })
+      body: JSON.stringify({ model: selectedModel, messages: [{ role: 'system', content: system + interactiveInstruction }, ...safeMessages], temperature: 0.6, max_tokens: codeMode ? 6000 : responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650 })
     });
     const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
