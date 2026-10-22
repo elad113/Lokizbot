@@ -1850,3 +1850,29 @@ button:disabled {
 .lokicode-dark .lk-starters button,.lokicode-dark .lk-secondary,.lokicode-dark .lk-back,.lokicode-dark .lk-tabs button,.lokicode-dark .lk-project-item { background:#2a223f; color:#e8ddfb; border-color:#443755; }
 .lokicode-dark .lk-workspace-head,.lokicode-dark .lk-tabs,.lokicode-dark .lk-run-footer { border-color:#40364f; background:#241d38; }
 @media (max-width:700px) { .lokicode-topbar { height:auto; min-height:66px; padding:10px 12px; flex-wrap:wrap; }.lk-back { padding:8px; }.lk-back span { display:none; }.lk-brand { order:-1; }.lk-top-actions { gap:5px; }.lk-secondary { padding:8px; font-size:10px; }.lk-main { width:calc(100% - 20px); padding-top:20px; }.lk-request-card { padding:13px; border-radius:17px; }.lk-intro h1 { letter-spacing:-1px; }.lk-request-footer { align-items:stretch; flex-direction:column; }.lk-generate { width:100%; }.lk-workspace-head { padding:12px; }.lk-tabs { gap:5px; padding:9px; }.lk-tabs button { padding:7px; font-size:9px; }.lk-editor { min-height:240px; }.lk-editor textarea { min-height:240px; }.lk-preview-frame { min-height:350px; }.lk-run-footer { align-items:flex-start; flex-direction:column; }.lk-run-button { width:100%; }.lk-footer { text-align:center; line-height:1.6; } }
+
+
+/* LokiBot Lokicode editor: bright paper canvas with editable syntax-colored text */
+.lk-brand-sub { color: #8d7aaf; font-weight: 600; font-size: 11px; }
+.lk-editor { background: #ffffff !important; border: 1px solid #e3e8f2 !important; border-radius: 12px; overflow: hidden; }
+.lk-editor-stage { position: relative; flex: 1; min-width: 0; overflow: hidden; background: #fff; }
+.lk-editor .lk-line-numbers { background: #f4f6fb !important; color: #9aa3b7 !important; border-right: 1px solid #e8ebf2; }
+.lk-code-highlight, .lk-editor-stage textarea {
+  margin: 0; padding: 16px 18px; width: 100%; min-height: 360px; max-height: 65vh;
+  overflow: auto; white-space: pre; tab-size: 2; font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0; word-break: normal; overflow-wrap: normal; border: 0; border-radius: 0;
+}
+.lk-code-highlight { position: absolute; inset: 0; color: #24324a; pointer-events: none; background: #fff; }
+.lk-editor-stage textarea { position: relative; display: block; resize: vertical; background: transparent !important; color: transparent !important; caret-color: #302b43; -webkit-text-fill-color: transparent; }
+.lk-editor-stage textarea::selection { background: #c8d9ff99; }
+.lk-code-highlight .tok-keyword { color: #7c3aed; font-weight: 700; }
+.lk-code-highlight .tok-number { color: #0f766e; }
+.lk-code-highlight .tok-string { color: #b45309; }
+.lk-code-highlight .tok-comment { color: #8490a4; font-style: italic; }
+.lk-editor-stage textarea:focus { outline: none; box-shadow: inset 0 0 0 2px #a8baff44; }
+.lokicode-shell { background: radial-gradient(ellipse at 15% 0%, #f0eaff 0, transparent 38%), #f7f8fc !important; }
+.lokicode-topbar { background: #ffffffdf !important; border-bottom: 1px solid #e6e9f2 !important; }
+.lk-workspace { border: 1px solid #e1e5ef; box-shadow: 0 20px 60px #403a6710; }
+.lk-run-button { transition: transform .2s ease, box-shadow .2s ease; }
+.lk-run-button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px #8062df30; }
+@media (prefers-reduced-motion: reduce) { .lk-run-button, .lk-workspace, .lk-code-loading { animation: none !important; transition: none !important; } }
