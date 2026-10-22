@@ -1082,6 +1082,7 @@ function App() {
                 <X size={19} />
               </button>
             </div>
+            <div className="settings-profile-card"><div className="avatar settings-avatar">{localStorage.getItem('lokibot_avatar') ? <img src={localStorage.getItem('lokibot_avatar') || ''} alt="Profile" /> : displayName.slice(0,1).toUpperCase()}</div><div><b>Profile picture</b><p>Choose an image from this device (up to 4 MB).</p><label className="secondary-btn upload-avatar-btn">Upload photo<input type="file" accept="image/*" hidden onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>4*1024*1024){notify('Choose an image smaller than 4 MB');return;}try{const data=await imageTools.resizeIfNeeded(f);localStorage.setItem('lokibot_avatar','data:'+data.mimeType+';base64,'+data.data);notify('Profile photo saved');}catch{notify('Could not read that image');}}}/></label><button className="secondary-btn" onClick={()=>{localStorage.removeItem('lokibot_avatar');notify('Profile photo removed');}}>Remove</button></div></div>
             <label className="field-label">REPLY LENGTH</label>
             <select className="settings-select" value={responseLength} onChange={e => setResponseLength(e.target.value)}><option value="short">Short (default)</option><option value="medium">Medium</option><option value="long">Long</option></select>
             <label className="field-label">REPLY LANGUAGE</label>
@@ -1114,6 +1115,9 @@ function App() {
                 </button>
               ))}
             </div>
+            <label className="field-label">20 ADDITIONAL SETTINGS</label><div className="settings-toggle-grid">{[
+['animations','Animated interface',true],['compact','Compact chat layout',false],['timestamps','Message timestamps',false],['autoScroll','Auto-scroll to newest message',true],['markdown','Rich text formatting',true],['avatars','Show message avatars',true],['confirmDelete','Confirm chat deletion',true],['codeWrap','Wrap long code lines',false],['strictSources','Prefer sourced research answers',true],['rememberContext','Use previous chats as context',true],['saveDraft','Preserve drafts locally',true],['sound','Interface sounds',false],['notifications','App notifications',true],['imageQuality','High-quality image output',true],['showUsage','Show usage meter',true],['spellcheck','Spellcheck input',true],['enterToSend','Enter sends messages',true],['externalLinks','Open links in a new tab',true],['reducedMotion','Reduce animations',false],['privacyMode','Private local history mode',false]
+].map(([key,label,initial])=><label className="setting-toggle" key={String(key)}><span>{String(label)}</span><input type="checkbox" defaultChecked={localStorage.getItem('lokibot_setting_'+key)===null?Boolean(initial):localStorage.getItem('lokibot_setting_'+key)==='true'} onChange={e=>localStorage.setItem('lokibot_setting_'+key,String(e.target.checked))}/></label>)}</div>
             <label className="field-label">COLOR UNIVERSE</label>
             <div className="theme-choices">
               {[
