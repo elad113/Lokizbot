@@ -7,11 +7,9 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.view.View;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private static final String HOME = "https://lokizon-6sibnd.v2.appdeploy.ai/";
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -24,13 +22,13 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(false);
+        settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient());
         setContentView(webView);
-        if (state != null) webView.restoreState(state); else webView.loadUrl(HOME);
+        if (state != null) webView.restoreState(state); else webView.loadUrl("file:///android_asset/site/index.html");
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
