@@ -163,6 +163,7 @@ function App() {
   const [responseLength, setResponseLength] = useState(localStorage.getItem('lokibot_length') || 'short');
   const [replyLanguage, setReplyLanguage] = useState(localStorage.getItem('lokibot_reply_language') || 'auto');
   const [modelChoice, setModelChoice] = useState(localStorage.getItem('lokibot_model') || 'lokizenith-3.2');
+  const [longTermMemory, setLongTermMemory] = useState(localStorage.getItem('lokibot_long_term_memory') || '');
   const [personality, setPersonality] = useState(
     localStorage.getItem('lokizon_personality') ||
       'Friendly, clever, encouraging and clear'
@@ -237,6 +238,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem('lokizon_personality', personality);
   }, [personality]);
+  useEffect(() => { localStorage.setItem('lokibot_long_term_memory', longTermMemory); }, [longTermMemory]);
   useEffect(() => { localStorage.setItem('lokizon_instructions', alwaysInstructions); }, [alwaysInstructions]);
   useEffect(() => { localStorage.setItem('lokizon_call_name', callName); }, [callName]);
   useEffect(() => {
@@ -311,6 +313,10 @@ function App() {
     }
     const userText =
       text.trim() || 'Please analyze this image and explain what you see.';
+    if (/\b(remember|please remember|keep in mind|my preference is)\b|זכור|תזכור|תזכרי|תזכור לי|העדפה שלי/i.test(userText)) {
+      const savedMemory = userText.replace(/^.*?(remember|please remember|keep in mind|my preference is|זכור|תזכור|תזכרי|תזכור לי|העדפה שלי)\s*[:,-]?\s*/i, '').trim();
+      if (savedMemory) setLongTermMemory(prev => [savedMemory, ...prev.split('\n').filter(Boolean)].filter((v,i,a)=>a.indexOf(v)===i).slice(0,20).join('\n'));
+    }
     if (userText.startsWith('/image ')) {
       const prompt = userText.slice(7).trim();
       if (!prompt) { notify('Describe the image you want to create'); return; }
@@ -369,7 +375,7 @@ function App() {
       const response = await api.post('/api/chat', {
         messages: [...updatedMsgs.slice(-18).map(m => ({ role: m.role, content: m.text })), ...(longMemory.trim() ? [{ role: 'system', content: 'Long-term memory from previous chats. Use when relevant:\\n' + longMemory.slice(0, 5000) }] : []), ...(fileContext ? [{ role: 'user', content: promptWithFile }] : [])],
         personality,
-        alwaysInstructions: alwaysInstructions + (callName.trim() ? '\nAlways address the user as: ' + callName.trim() : ''),
+        alwaysInstructions: alwaysInstructions + (callName.trim() ? '\nAlways address the user as: ' + callName.trim() : '') + (longTermMemory.trim() ? '\nLong-term memories from previous chats (use only when relevant):\n' + longTermMemory.slice(0,4000) : ''),
         mode,
         thinkingLevel, responseLength, replyLanguage, modelChoice,
         image: prepared
