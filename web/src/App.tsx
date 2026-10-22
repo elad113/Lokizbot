@@ -248,35 +248,6 @@ function App() {
     setShowTools(false);
     setMobileNav(false);
   }
-  async function generateImageRequest(chat: Chat, prompt: string) {
-    const userMsg: Msg = { id: uid(), role: 'user', text: prompt };
-    const pendingId = uid();
-    patchChat(chat.id, c => ({      ...c,
-      title: c.messages.length === 0 ? prompt.slice(0, 38) : c.title,
-      updated: Date.now(),
-      messages: [...c.messages, userMsg, { id: pendingId, role: 'assistant', text: 'Creating your image…', kind: 'image-pending' }],
-    }));
-    setInput('');
-    setBusy(true);
-    try {
-      const response = await api.post('/api/image', { prompt });
-      const data = response.data as { image?: { data?: string; mimeType?: string }; error?: string };
-      if (!data.image?.data) throw new Error(data.error || 'Image generation returned no image.');
-      const imageUrl = 'data:' + (data.image.mimeType || 'image/png') + ';base64,' + data.image.data;
-      patchChat(chat.id, c => ({
-        ...c,
-        updated: Date.now(),
-        messages: c.messages.map(m => m.id === pendingId ? { ...m, text: 'Your image is ready ✨', image: imageUrl, kind: 'generated-image' } : m),
-      }));
-    } catch {
-      patchChat(chat.id, c => ({
-        ...c,
-        messages: c.messages.map(m => m.id === pendingId ? { ...m, text: 'I couldn’t create the image this time. Please try again with a shorter or more specific prompt.', kind: undefined } : m),
-      }));
-    } finally {
-      setBusy(false);
-    }
-  }
   async function send(text = input) {
     if (busy || (!text.trim() && !attachment)) return;
     let chat = activeChat;
@@ -767,12 +738,7 @@ function App() {
                         LokiBot <span>✦</span>
                       </div>
                     )}
-                    {m.kind === 'image-pending' && (
-                      <div className="image-generation-card" aria-live="polite">
-                        <div className="image-gen-art"><span className="image-gen-orb orb-a" /><span className="image-gen-orb orb-b" /><span className="image-gen-spark">✦</span><div className="image-gen-skeleton"><i /><i /><i /></div></div>
-                        <div className="image-gen-caption"><span className="image-gen-spinner" /> <b>Lokizon is creating your image</b><small>Mixing colors, light and details…</small></div>
-                      </div>
-                    )}
+
                     {m.image && <img className="message-image" src={m.image} alt="AI generated or attached image" />}
                     <div
                       className={
@@ -1102,8 +1068,14 @@ function App() {
               <button
                 className="primary-btn"
                 onClick={() => {
+                  localStorage.setItem('lokizon_personality', personality);
+                  localStorage.setItem('lokizon_theme', theme);
+                  localStorage.setItem('lokibot_length', responseLength);
+                  localStorage.setItem('lokibot_reply_language', replyLanguage);
+                  localStorage.setItem('lokibot_thinking', thinkingLevel);
+                  localStorage.setItem('lokibot_model', modelChoice);
                   setShowSettings(false);
-                  notify('Your personality is saved ✨');
+                  notify('Settings applied ✨');
                 }}
               >
                 Save preferences <Check size={15} />
