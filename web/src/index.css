@@ -1876,3 +1876,9 @@ button:disabled {
 .lk-run-button { transition: transform .2s ease, box-shadow .2s ease; }
 .lk-run-button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px #8062df30; }
 @media (prefers-reduced-motion: reduce) { .lk-run-button, .lk-workspace, .lk-code-loading { animation: none !important; transition: none !important; } }
+
+.model-select-wrap select, .effort-select-wrap select { border:0; background:transparent; color:var(--ink); font:inherit; outline:0; max-width:145px; }
+.model-select-wrap { cursor:pointer; }
+.effort-select-wrap { display:flex; align-items:center; gap:5px; padding:7px 9px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--muted); font-size:11px; }
+.settings-select { width:100%; margin:7px 0 18px; padding:11px 12px; border:1px solid #e7e0f2; border-radius:10px; color:var(--ink); background:var(--surface); }
+@media(max-width:650px) { .effort-select-wrap { max-width:92px; } .effort-select-wrap select { max-width:60px; } .model-select-wrap select { max-width:100px; } }
