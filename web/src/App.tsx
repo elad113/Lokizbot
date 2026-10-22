@@ -803,6 +803,7 @@ function App() {
           </section>
         ) : (
           <section className="conversation-view">
+            {imageStudioOpen && <div className="image-studio-card"><label>Describe the image LokiBot should create</label><textarea className="image-studio-input" rows={3} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A cinematic fantasy city at sunset, detailed textures, square composition…" /><div className="image-studio-actions"><small>Uses LOKIZ_IMAGE_GEN only</small><button onClick={startImageGeneration} disabled={generatingImage || !imagePrompt.trim()}><WandSparkles size={16} /> Create image</button></div></div>}
             <div className="messages">
               {messages.map(m => (
                 <div key={m.id} className={'message-row ' + m.role}>
