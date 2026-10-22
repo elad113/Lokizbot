@@ -17,6 +17,8 @@ jobs:
           node-version: '20'
       - name: Build standalone frontend
         working-directory: web
+        env:
+          VITE_API_BASE_URL: https://lokibot-api.onrender.com
         run: |
           npm install
           npm run build
