@@ -576,10 +576,7 @@ function App() {
                 <MessageCircle size={15} />
                 {!collapsed && <span>{c.title}</span>}
               </button>
-              {!collapsed && (
-                <button className={'pin-chat ' + (c.pinned ? 'pinned' : '')} title={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => togglePin(c.id)}><Star size={13} fill={c.pinned ? 'currentColor' : 'none'} /></button>
-                <button className="delete-chat" title="Delete chat" onClick={() => setConfirmDelete(c.id)}><Trash2 size={13} /></button>
-              )}
+              {!collapsed && <><button className={'pin-chat ' + (c.pinned ? 'pinned' : '')} title={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => togglePin(c.id)}><Star size={13} fill={c.pinned ? 'currentColor' : 'none'} /></button><button className="delete-chat" title="Delete chat" onClick={() => setConfirmDelete(c.id)}><Trash2 size={13} /></button></>}
             </div>
           ))}
           {regularChats.length > 0 && pinnedChats.length > 0 && !collapsed && <div className="history-section-title">YOUR CHATS</div>}
