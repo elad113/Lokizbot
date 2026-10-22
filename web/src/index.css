@@ -1956,3 +1956,26 @@ html, body, #root { width:100%; height:100%; overflow:hidden; overscroll-behavio
 
 /* Fix Lokicode viewport: scroll the work area, never trap code or page overflow */
 html,body,#root{min-height:100%;height:100%;overscroll-behavior-y:contain}body{overflow:hidden}.app-shell{height:100dvh;min-height:0;overflow:hidden}.main-area{min-height:0;overflow-y:auto;overscroll-behavior:contain}.conversation-view,.welcome-view{min-height:0}.messages{overflow-y:auto;overscroll-behavior:contain}.lokicode-shell{height:100dvh;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y}.lk-main{min-height:0;overflow:visible;padding-bottom:calc(28px + env(safe-area-inset-bottom))}.lk-workspace{min-height:280px}.lk-editor{min-height:240px;max-height:58vh;overflow:auto;overscroll-behavior:contain}.lk-editor-stage{min-width:0;overflow:hidden}.lk-editor-stage textarea,.lk-code-highlight{overflow:auto;overscroll-behavior:contain;max-height:58vh}.lk-request-card textarea{max-height:35vh;overflow-y:auto}.lk-project-drawer{max-height:65dvh;overflow:auto;overscroll-behavior:contain}@media(max-width:700px){.lk-main{padding-bottom:calc(36px + env(safe-area-inset-bottom))}.lk-editor{max-height:50vh}.lk-editor-stage textarea,.lk-code-highlight{max-height:50vh}}
+
+
+/* Lokicode: keep the page fixed; scroll only the coding workspace/editor */
+.lokicode-shell{height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.lokicode-topbar{flex:0 0 auto}
+.lk-main{flex:1 1 auto;min-height:0;height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:28px}
+.lk-workspace{min-height:320px;max-height:72vh;overflow:hidden;display:flex;flex-direction:column}
+.lk-editor{min-height:220px;flex:1 1 auto;overflow:hidden}
+.lk-editor-stage{min-height:220px;max-height:48vh;overflow:hidden}
+.lk-editor-stage textarea,.lk-editor-stage pre{overflow:auto;overscroll-behavior:contain;max-height:48vh}
+.lk-result-view{overflow:auto;max-height:48vh;overscroll-behavior:contain}
+.lk-project-drawer{max-height:60dvh;overflow-y:auto;overscroll-behavior:contain}
+.lk-request-card textarea{max-height:22vh;overflow-y:auto;overscroll-behavior:contain}
+body:has(.lokicode-shell){overflow:hidden}
+.resources-trust-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:9px 0 5px}
+.resources-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700}
+.resources-toggle svg{width:14px;height:14px}
+.trust-meter{display:inline-flex;align-items:center;gap:7px;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 9px;background:var(--surface)}
+.trust-track{height:5px;width:56px;border-radius:9px;background:var(--line);overflow:hidden}
+.trust-track i{display:block;height:100%;border-radius:9px}
+.resources-list{margin-top:6px;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:10px 12px;display:grid;gap:8px}
+.resources-list a{font-size:12px;overflow-wrap:anywhere;color:#39865b}
+@media(max-width:650px){.lk-main{padding:12px 12px 26px}.lk-workspace{max-height:70dvh}.lk-editor-stage,.lk-editor-stage textarea,.lk-editor-stage pre,.lk-result-view{max-height:44dvh}}
