@@ -1,4 +1,4 @@
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || '';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'https://lokibot-api.onrender.com';
 async function request(path: string, body: unknown) {
  if (!API_BASE) throw new Error('The independent AI server is not configured yet. The local interface is ready, but a secure backend URL is required.');
  const response = await fetch(API_BASE.replace(/\/$/, '') + path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
