@@ -19,7 +19,7 @@ jobs:
         working-directory: web
         env:
           VITE_API_BASE_URL: https://lokibot-api.onrender.com
-          VITE_GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || secrets.LOKIZON_AI_API_KEY }}
+          VITE_LOKIZON_AI_API_KEY: ${{ secrets.LOKIZON_AI_API_KEY }}
         run: |
           npm install
           npm run build
