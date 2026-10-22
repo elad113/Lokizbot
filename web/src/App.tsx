@@ -824,11 +824,11 @@ function App() {
                         (m.role === 'assistant' ? 'assistant-text' : '')
                       }
                     >
-                      {m.text}
+                      {m.interface ? null : m.text}
                     </div>
 
-                    {m.role === 'assistant' && <div className="trust-resources-row"><span className="trust-meter" title="Estimated indicator, not a guarantee"><span className="trust-meter-fill" style={{width:trustScore(m.text)+'%',background:trustScore(m.text)>=82?'#16a34a':trustScore(m.text)>=65?'#f59e0b':'#ef4444'}}/><b>Trust {trustScore(m.text)}%</b></span><button className="resources-btn" onClick={() => setOpenResources(openResources===m.id?null:m.id)}><Globe size={13}/> Resources {extractResourceLinks(m.text).length ? '('+extractResourceLinks(m.text).length+')' : ''}</button></div>}
-                    {m.role === 'assistant' && openResources===m.id && <div className="resources-panel">{extractResourceLinks(m.text).length ? extractResourceLinks(m.text).map(url=><a key={url} href={url} target="_blank" rel="noreferrer">{url}</a>) : <span>No links in this answer. Ask LokiBot to provide sources.</span>}</div>}
+                    {m.role === 'assistant' && extractResourceLinks(m.text).length > 0 && <div className="trust-resources-row"><button className="resources-btn" onClick={() => setOpenResources(openResources===m.id?null:m.id)}><Globe size={13}/> Resources ({extractResourceLinks(m.text).length})</button></div>}
+                    {m.role === 'assistant' && openResources===m.id && <div className="resources-modal-scrim" onClick={() => setOpenResources(null)}><div className="resources-panel resources-floating" onClick={e => e.stopPropagation()}><div className="resources-panel-head"><b>Sources</b><button onClick={() => setOpenResources(null)}><X size={16}/></button></div>{extractResourceLinks(m.text).map(url=><div className="resource-source" key={url}><a href={url} target="_blank" rel="noreferrer">{url}</a><small>Check publisher, publication date and supporting evidence before relying on this source.</small></div>)}</div></div>}
                     {m.role === 'assistant' && (
                       <div className="message-actions">
                         <button
@@ -1022,24 +1022,7 @@ function App() {
               </div>
             )}
             <div className="composer-footer">
-              <div className="composer-tools">
-                <button className="tool-btn" onClick={() => fileRef.current?.click()}><ImagePlus size={16} /><span>Image</span></button>
-                <button className="tool-btn" onClick={() => setImageStudioOpen(v => !v)}><WandSparkles size={16} /><span>Create image</span></button>
-                <button
-                  className="tool-btn"
-                  onClick={() => setMode(mode === 'learn' ? 'chat' : 'learn')}
-                >
-                  <Brain size={16} />
-                  <span>Learn</span>
-                </button>
-                <button
-                  className="tool-btn"
-                  onClick={() => setShowTools(!showTools)}
-                >
-                  <Plus size={16} />
-                  <span>Tools</span>
-                </button>
-              </div>              <button
+              <div className="composer-tools"><div className="plus-menu-wrap"><button className="tool-btn plus-main" aria-label="More actions" onClick={() => setPlusMenuOpen(v => !v)}><Plus size={19}/><span>Add</span></button>{plusMenuOpen && <div className="plus-menu"><button onClick={() => {fileRef.current?.click();setPlusMenuOpen(false)}}><Paperclip size={16}/> Attach file or image</button><button onClick={() => {setImageStudioOpen(v=>!v);setPlusMenuOpen(false)}}><WandSparkles size={16}/> Create image</button><button onClick={() => {setMode(mode==='learn'?'chat':'learn');setPlusMenuOpen(false)}}><Brain size={16}/> {mode==='learn'?'Exit learn mode':'Learn mode'}</button><button onClick={() => {setShowTools(v=>!v);setPlusMenuOpen(false)}}><Sparkles size={16}/> Tools</button><button onClick={() => {setShowSettings(true);setPlusMenuOpen(false)}}><Settings2 size={16}/> Settings &amp; memory</button></div>}</div></div>              <button
                 className="send-btn"
                 onClick={() => send()}
                 disabled={busy || (!input.trim() && !attachment)}
