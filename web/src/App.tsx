@@ -198,6 +198,17 @@ function App() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [alwaysInstructions, setAlwaysInstructions] = useState(localStorage.getItem('lokizon_instructions') || '');
   const [callName, setCallName] = useState(localStorage.getItem('lokizon_call_name') || '');
+  const [account, setAccount] = useState<{email:string;name:string}|null>(() => { try { const x=localStorage.getItem('lokibot_account'); return x ? JSON.parse(x) : null; } catch { return null; } });
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signup'|'login'>('signup');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [usage, setUsage] = useState(() => { try { const x=JSON.parse(localStorage.getItem('lokibot_usage')||'{}'); if (Date.now()-(x.resetAt||0)>=21600000) return {used:0,resetAt:0}; return {used:Number(x.used)||0,resetAt:Number(x.resetAt)||0}; } catch { return {used:0,resetAt:0}; } });
+  const usageLimit = account ? 25000 : 11000;
+  const usageRemaining = Math.max(0, usageLimit-usage.used);
+  const usagePercent = Math.min(100, Math.round(usage.used/usageLimit*100));
+  const usageColor = usagePercent >= 82 ? '#ef4444' : usagePercent >= 60 ? '#f59e0b' : usagePercent >= 35 ? '#22c55e' : '#38bdf8';
+  useEffect(() => { localStorage.setItem('lokibot_usage', JSON.stringify(usage)); }, [usage]);
   const [displayName, setDisplayName] = useState(
     localStorage.getItem('lokizon_name') || 'Explorer'
   );
@@ -278,6 +289,7 @@ function App() {
   }
   async function send(text = input) {
     if (busy || (!text.trim() && !attachment)) return;
+    if (usageRemaining <= 0) { notify('Your Usage Limit has been finished'); return; }
     let chat = activeChat;
     if (!chat) {
       chat = {
@@ -616,7 +628,7 @@ function App() {
         <div className="mobile-scrim" onClick={() => setMobileNav(false)} />
       )}
       <main className="main-area">
-        <div className="profile-topline"><div className="avatar">{displayName.slice(0, 1).toUpperCase()}</div><div><b>{displayName}</b><small>{callName ? 'AI calls you ' + callName : 'Your personal AI space'}</small></div><button onClick={() => setShowProfile(true)}><SlidersHorizontal size={14} /> Profile</button></div>
+        <div className="profile-topline"><div className="avatar">{displayName.slice(0, 1).toUpperCase()}</div><div className="profile-identity"><b>{account?.name || displayName}</b><small>{account?.email || (callName ? 'AI calls you ' + callName : 'Guest account')}</small></div><div className="usage-meter" title={`${usage.used.toLocaleString()} tokens used of ${usageLimit.toLocaleString()}`}><div className="usage-meter-top"><b>Usage remaining: {usageRemaining.toLocaleString()}</b><span>{usagePercent}% used</span></div><div className="usage-track"><i style={{width:usagePercent+'%',background:usageColor}} /></div></div>{!account && <button className="account-cta" onClick={() => {setAuthMode('signup');setAuthOpen(true)}}>Sign up / Log in</button>}<button onClick={() => setShowProfile(true)}><SlidersHorizontal size={14} /> Profile</button></div>
         <header className="topbar">
           <div className="top-left">
             <button
@@ -1177,6 +1189,7 @@ function App() {
           </div>
         </div>
       )}
+      {authOpen && <div className="modal-backdrop" onClick={() => setAuthOpen(false)}><div className="modal auth-modal" onClick={e => e.stopPropagation()}><div className="modal-head"><div><div className="modal-icon"><ShieldCheck size={19}/></div><h2>{authMode==='signup'?'Create your LokiBot account':'Welcome back'}</h2><p>{authMode==='signup'?'Create an account to unlock 25,000 tokens per cycle.':'Sign in to this device account.'}</p></div><button className="icon-btn" onClick={() => setAuthOpen(false)}><X size={19}/></button></div><label>Email</label><input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="you@example.com"/><label>Password</label><input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="At least 8 characters"/><p className="auth-warning">This initial account mode stores data on this device only; it does not yet sync between devices or reinstalls.</p><div className="confirm-delete-actions"><button onClick={()=>setAuthMode(authMode==='signup'?'login':'signup')}>{authMode==='signup'?'I already have an account':'Create account'}</button><button className="primary-btn" onClick={()=>{if(!authEmail.includes('@')||authPassword.length<8){notify('Enter a valid email and password of at least 8 characters');return;}const email=authEmail.trim().toLowerCase();if(authMode==='login'){try{const saved=JSON.parse(localStorage.getItem('lokibot_account')||'null');if(!saved||saved.email!==email||saved.password!==authPassword){notify('No matching local account was found');return;}}catch{notify('No account found on this device');return;}}const a={email,name:email.split('@')[0],password:authPassword};localStorage.setItem('lokibot_account',JSON.stringify(a));setAccount({email:a.email,name:a.name});setAuthOpen(false);setAuthPassword('');notify('Signed in on this device');}}>Continue</button></div></div></div>}
       {confirmDelete && <div className="modal-backdrop" onClick={() => setConfirmDelete(null)}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-head"><div><div className="modal-icon" style={{background:'#fee2e2',color:'#dc2626'}}><Trash2 size={19} /></div><h2>Delete this chat forever?</h2><p>This conversation and its messages will be permanently removed from this device. This cannot be undone.</p></div><button className="icon-btn" onClick={() => setConfirmDelete(null)}><X size={19} /></button></div><div className="confirm-delete-actions"><button onClick={() => setConfirmDelete(null)}>Cancel</button><button className="danger" onClick={() => removeChat(confirmDelete)}>Yes, delete forever</button></div></div></div>}
       {imageFullScreen && <div className="image-fullscreen" onClick={() => setImageFullScreen(null)}><button style={{position:'absolute',top:14,right:14}} onClick={() => setImageFullScreen(null)}><X size={20} /> Close</button><img src={imageFullScreen} alt="Full-screen generated image" onClick={e => e.stopPropagation()} /><div className="image-fullscreen-actions" onClick={e => e.stopPropagation()}><button onClick={() => { const a=document.createElement('a'); a.href=imageFullScreen; a.download='lokibot-image.png'; a.click(); }}><Download size={15} /> Download</button><button onClick={async () => { try { const blob=await (await fetch(imageFullScreen)).blob(); const file=new File([blob],'lokibot-image.png',{type:blob.type}); if(navigator.share && navigator.canShare?.({files:[file]})) await navigator.share({files:[file],title:'LokiBot image'}); else notify('Sharing is not supported on this device'); } catch { notify('Could not share image'); } }}><Share2 size={15} /> Share</button><button onClick={async () => { try { const blob=await (await fetch(imageFullScreen)).blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]:blob})]); notify('Image copied'); } catch { notify('Copy image is not supported here'); } }}><Copy size={15} /> Copy</button><button onClick={() => { setImagePrompt('Edit this image: '); setImageStudioOpen(true); setImageFullScreen(null); }}><WandSparkles size={15} /> Edit</button></div></div>}
       {(showTools || showAllTools) && (
