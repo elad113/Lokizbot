@@ -1,9 +1,9 @@
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'https://lokibot-api.onrender.com';
-const GROQ_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || '';
+const OPENROUTER_KEY = (import.meta as any).env?.VITE_LOKIZON_AI_API_KEY || '';
 async function request(path: string, body: any) {
- // Standalone APK chat uses the GitHub Actions secret injected at build time; no AppDeploy dependency.
+ // Standalone APK chat uses the OpenRouter secret injected by the independent GitHub Actions build; no AppDeploy dependency.
  // A key embedded in a client APK can be extracted. A private server proxy is the secure long-term option.
- if (path === '/api/chat' && GROQ_KEY) {
+ if (path === '/api/chat' && OPENROUTER_KEY) {
    const { messages = [], personality, mode, image, responseLength = 'short', thinkingLevel = 'medium', replyLanguage = 'auto', modelChoice = 'lokizenith-3.2' } = body || {};
    const system = [
      'You are LokiBot, a helpful, accurate, friendly AI assistant. Prefer concise, natural answers.',
@@ -19,15 +19,15 @@ async function request(path: string, body: any) {
      const last = contentMessages[contentMessages.length-1];
      if (last.role === 'user') last.content = [{type:'text',text:last.content},{type:'image_url',image_url:{url:`data:${image.mimeType || 'image/jpeg'};base64,${image.data}`}}];
    }
-   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-     method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},
-     body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:contentMessages,temperature:0.6,max_tokens:responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650}),
+   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+     method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+OPENROUTER_KEY,'HTTP-Referer':'https://github.com/elad113/Lokizbot','X-Title':'LokiBot'},
+     body:JSON.stringify({model:'openrouter/auto',messages:contentMessages,temperature:0.6,max_tokens:responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650}),
    });
    const data = await response.json().catch(()=>({}));
-   if (!response.ok) throw new Error(data?.error?.message || 'Groq request failed ('+response.status+').');
+   if (!response.ok) throw new Error(data?.error?.message || 'OpenRouter request failed ('+response.status+').');
    const text = data?.choices?.[0]?.message?.content;
-   if (typeof text !== 'string' || !text.trim()) throw new Error('Groq returned an empty answer.');
-   return {data:{text:text.trim(),model:data?.model || 'llama-3.3-70b-versatile'}};
+   if (typeof text !== 'string' || !text.trim()) throw new Error('OpenRouter returned an empty answer.');
+   return {data:{text:text.trim(),model:data?.model || 'openrouter/auto'}};
  }
  const response = await fetch(API_BASE.replace(/\/$/, '') + path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  const data = await response.json().catch(()=>({}));
