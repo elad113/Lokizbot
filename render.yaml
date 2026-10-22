@@ -16,5 +16,7 @@ services:
         value: openai/gpt-4o-mini
       - key: ZENITH35_MODEL
         sync: false
+      - key: LOKIZ_IMAGE_GEN
+        sync: false
       - key: NODE_ENV
         value: production
