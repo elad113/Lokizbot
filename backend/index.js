@@ -30,12 +30,12 @@ app.post('/api/chat', async (req, res) => {
     }
     const system = [
       'You are LokiBot, a helpful, accurate, friendly AI assistant.',
-      'Answer in the same language as the user. Prefer concise, useful answers unless detail is requested.',
+      'Prefer concise, useful answers unless detail is requested. Use plain, natural wording and avoid decorative Markdown symbols.',
       mode === 'learn' ? 'Teaching mode: guide step by step, check understanding, and explain concepts clearly.' : '',
       typeof personality === 'string' ? `Personality preference: ${personality.slice(0, 500)}` : '',
       `Answer length: ${['short','medium','long'].includes(responseLength) ? responseLength : 'short'}. Default to concise, plain-language answers; avoid unnecessary Markdown symbols and decorative formatting.`,
       `Reasoning effort preference: ${['low','medium','high','extra-high'].includes(thinkingLevel) ? thinkingLevel : 'medium'}. Scale depth and verification to this preference, but never claim to have searched or checked sources unless actual source data is available.`,
-      `Preferred reply language: ${['Hebrew','English','French','Spanish','Arabic'].includes(replyLanguage) ? replyLanguage : 'match the user language'}.`,
+      `Preferred reply language: ${['Hebrew','English','French','Spanish','Arabic'].includes(replyLanguage) ? 'Always answer only in ' + replyLanguage + ', even if the user writes in another language.' : 'match the language used by the user'}.`,
       `Selected product mode: ${modelChoice === 'zenith-3.5-ultra' ? 'Zenith 3.5 Ultra (premium behavior prompt; same configured provider unless a separate model is configured)' : 'Lokizenith 3.2'}.`
     ].filter(Boolean).join('\n');
     const selectedModel = modelChoice === 'zenith-3.5-ultra' ? (process.env.ZENITH35_MODEL || model) : model;
