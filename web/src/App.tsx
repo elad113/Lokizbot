@@ -443,7 +443,7 @@ function App() {
   }
   function togglePin(id: string) { patchChat(id, c => ({ ...c, pinned: !c.pinned })); notify('Chat pin updated'); }
   function startImageGeneration() { const p = imagePrompt.trim(); if (!p) { notify('Describe the image first'); return; } void send('/image ' + p); }
-  function extractResourceLinks(text: string) { return Array.from(new Set((text.match(/https?:\\/\\/[^\\s)\\]}>,]+/g) || []).map(x => x.replace(/[.,;]+$/, ''))).slice(0, 8); }
+  function extractResourceLinks(text: string) { return Array.from(new Set((text.match(/https?:\/\/[^\s)\]}>,]+/g) || [])).map(x => x.replace(/[.,;]+$/, '')).slice(0, 8); }
   function trustScore(text: string) { const links = extractResourceLinks(text); let score = links.length ? 78 + Math.min(18, links.length * 4) : 58; if (/I am not sure|I can’t verify|I cannot verify|may be outdated|לא בטוח|לא ניתן לאמת|ייתכן שטעיתי/i.test(text)) score -= 12; if (/medical|legal|financial|רפוא|משפטי|פיננסי/i.test(text)) score = Math.min(score, 72); return Math.max(20, Math.min(98, score)); }
   const filtered = chats.filter(c => c.title.toLowerCase().includes(query.toLowerCase()));
   const pinnedChats = filtered.filter(c => c.pinned);
