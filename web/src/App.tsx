@@ -589,7 +589,7 @@ function App() {
               {!collapsed && <><button className={'pin-chat ' + (c.pinned ? 'pinned' : '')} title="Pin chat" onClick={() => togglePin(c.id)}><Star size={13} /></button><button className="delete-chat" title="Delete chat" onClick={() => setConfirmDelete(c.id)}><Trash2 size={13} /></button></>}
             </div>
           ))}
-          {!filtered.length && !collapsed && <p className="empty-history">Your conversations will appear here.</p>
+          {!filtered.length && !collapsed && <p className="empty-history">Your conversations will appear here.</p>}
         </div>
         <div className="sidebar-bottom">
           <button className="side-link" onClick={() => setShowSettings(true)}>
