@@ -38,10 +38,14 @@ app.post('/api/chat', async (req, res) => {
       `Preferred reply language: ${['Hebrew','English','French','Spanish','Arabic'].includes(replyLanguage) ? replyLanguage : 'match the user language'}.`,
       `Selected product mode: ${modelChoice === 'zenith-3.5-ultra' ? 'Zenith 3.5 Ultra (premium behavior prompt; same configured provider unless a separate model is configured)' : 'Lokizenith 3.2'}.`
     ].filter(Boolean).join('\n');
+    const selectedModel = modelChoice === 'zenith-3.5-ultra' ? (process.env.ZENITH35_MODEL || model) : model;
+    const lastPrompt = safeMessages[safeMessages.length - 1]?.content;
+    const interactiveRequested = typeof lastPrompt === 'string' && /quiz|multiple.choice test|flashcards|study cards|מבחן|בוחן|כרטיסיות/i.test(lastPrompt);
+    const interactiveInstruction = interactiveRequested ? ' If the user requests a quiz/test, return ONLY valid JSON with shape {"text":"short intro","quiz":[{"q":"question","options":["A","B","C","D"],"answer":0,"why":"short explanation"}],"flashcards":null}. If they request flashcards, use {"text":"short intro","quiz":null,"flashcards":[{"q":"question","a":"answer"}]}. For ordinary chat, answer normally. Do not wrap JSON in markdown fences.' : '';
     const upstream = await fetch(apiUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_ORIGIN || 'https://github.com/elad113/Lokizbot', 'X-Title': 'LokiBot' },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, ...safeMessages], temperature: 0.6, max_tokens: responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650 })
+      body: JSON.stringify({ model: selectedModel, messages: [{ role: 'system', content: system + interactiveInstruction }, ...safeMessages], temperature: 0.6, max_tokens: responseLength === 'long' ? 3000 : responseLength === 'medium' ? 1800 : 650 })
     });
     const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
@@ -51,7 +55,14 @@ app.post('/api/chat', async (req, res) => {
     }
     const text = payload?.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || !text.trim()) return res.status(502).json({ error: 'The AI provider returned an empty answer.' });
-    return res.json({ text: text.trim(), model: payload?.model || model });
+    const trimmed = text.trim();
+    if (interactiveRequested) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') return res.json({ text: typeof parsed.text === 'string' ? parsed.text : 'Here is your interactive activity.', quiz: Array.isArray(parsed.quiz) ? parsed.quiz.slice(0, 20) : undefined, flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards.slice(0, 40) : undefined, model: payload?.model || selectedModel });
+      } catch {}
+    }
+    return res.json({ text: trimmed, model: payload?.model || selectedModel });
   } catch (error) {
     return res.status(500).json({ error: error instanceof Error ? error.message : 'Unexpected backend error.' });
   }
