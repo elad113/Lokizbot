@@ -1106,6 +1106,9 @@ function App() {
             <input className="profile-input" value={callName} onChange={e => setCallName(e.target.value)} placeholder="Your preferred name or nickname" maxLength={40} />
             <label className="field-label">ALWAYS FOLLOW THESE INSTRUCTIONS</label>
             <textarea className="settings-textarea" rows={3} value={alwaysInstructions} onChange={e => setAlwaysInstructions(e.target.value)} placeholder="Always answer in Hebrew, use a friendly tone, explain step by step…" />
+            <label className="field-label">LONG-TERM MEMORY · REMEMBER ACROSS CHATS</label>
+            <textarea className="settings-textarea" rows={4} value={longMemory} onChange={e => setLongMemory(e.target.value)} placeholder="Important preferences, ongoing projects, facts you want LokiBot to remember in future chats…" />
+            <p className="memory-note">Stored locally in this app on this device. Add only information you want carried into other chats.</p>
             <label className="field-label">PERSONALITY</label>
             <textarea
               className="settings-textarea"
