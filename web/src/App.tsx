@@ -581,10 +581,15 @@ function App() {
           ))}
           {regularChats.length > 0 && pinnedChats.length > 0 && !collapsed && <div className="history-section-title">YOUR CHATS</div>}
           {regularChats.map(c => (
-            <p className="empty-history">
-              Your conversations will appear here.
-            </p>
-          )}
+            <div className={'chat-item ' + (c.id === active ? 'active' : '')} key={c.id}>
+              <button className="chat-select" onClick={() => { setActive(c.id); setFlashcards(null); setQuiz(null); setMobileNav(false); }}>
+                <MessageCircle size={15} />
+                {!collapsed && <span>{c.title}</span>}
+              </button>
+              {!collapsed && <><button className={'pin-chat ' + (c.pinned ? 'pinned' : '')} title="Pin chat" onClick={() => togglePin(c.id)}><Star size={13} /></button><button className="delete-chat" title="Delete chat" onClick={() => setConfirmDelete(c.id)}><Trash2 size={13} /></button></>}
+            </div>
+          ))}
+          {!filtered.length && !collapsed && <p className="empty-history">Your conversations will appear here.</p>
         </div>
         <div className="sidebar-bottom">
           <button className="side-link" onClick={() => setShowSettings(true)}>
