@@ -146,6 +146,10 @@ function App() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'chat' | 'learn'>('chat');
+  const [thinkingLevel, setThinkingLevel] = useState(localStorage.getItem('lokibot_thinking') || 'medium');
+  const [responseLength, setResponseLength] = useState(localStorage.getItem('lokibot_length') || 'short');
+  const [replyLanguage, setReplyLanguage] = useState(localStorage.getItem('lokibot_reply_language') || 'auto');
+  const [modelChoice, setModelChoice] = useState(localStorage.getItem('lokibot_model') || 'lokizenith-3.2');
   const [personality, setPersonality] = useState(
     localStorage.getItem('lokizon_personality') ||
       'Friendly, clever, encouraging and clear'
@@ -1043,6 +1047,10 @@ function App() {
                 <X size={19} />
               </button>
             </div>
+            <label className="field-label">REPLY LENGTH</label>
+            <select className="settings-select" value={responseLength} onChange={e => setResponseLength(e.target.value)}><option value="short">Short (default)</option><option value="medium">Medium</option><option value="long">Long</option></select>
+            <label className="field-label">REPLY LANGUAGE</label>
+            <select className="settings-select" value={replyLanguage} onChange={e => setReplyLanguage(e.target.value)}><option value="auto">Match my message</option><option value="Hebrew">עברית</option><option value="English">English</option><option value="French">Français</option><option value="Spanish">Español</option><option value="Arabic">العربية</option></select>
             <label className="field-label">PERSONALITY</label>
             <textarea
               className="settings-textarea"
