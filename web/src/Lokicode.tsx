@@ -57,6 +57,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
   const [code, setCode] = useState('');
   const [summary, setSummary] = useState('Your build summary will appear here after LokiBot generates the code.');
   const [busy, setBusy] = useState(false);
+  const [hasAttempted, setHasAttempted] = useState(false);
   const [running, setRunning] = useState(false);
   const [view, setView] = useState<'code' | 'result'>('code');
   const [stdin, setStdin] = useState('');
@@ -81,6 +82,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
   async function generate() {
     if (!prompt.trim() || busy) return;
     setBusy(true);
+    setHasAttempted(true);
     setView('code');
     setOutput('Run your code to see output here.');
     try {
@@ -101,7 +103,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
       setSummary(parsed.summary);
       setProjectTitle(prompt.trim().replace(/\s+/g, ' ').slice(0, 42) || 'Untitled project');
       notify('Lokicode generated your code ✨');
-    } catch (e) { setSummary(getError(e)); notify('Code generation failed'); }
+    } catch (e) { setSummary('Generation failed — your workspace is still open. ' + getError(e)); setCode(''); setView('code'); notify('Code generation failed. Review the error and try again.'); }
     finally { setBusy(false); }
   }
 
@@ -161,7 +163,7 @@ export default function Lokicode({ onBack, dark, notify }: Props) {
           <div className="lk-starters">{starters.map(item => <button key={item} onClick={() => setPrompt(item)}>{item}</button>)}</div>
           <div className="lk-request-footer"><span><Sparkles size={14} /> Complete code · summary · run & test</span><button className="lk-generate" onClick={generate} disabled={busy || !prompt.trim()}>{busy ? <><LoaderCircle className="lk-spin" size={17} /> Writing code…</> : <><WandSparkles size={17} /> Generate code</>}</button></div>
         </section>
-        {(code || busy) && <section className={'lk-workspace ' + (fullscreen ? 'lk-fullscreen' : '')}>
+        {(code || busy || hasAttempted) && <section className={'lk-workspace ' + (fullscreen ? 'lk-fullscreen' : '')}>
           <div className="lk-workspace-head"><div><span className="lk-live-dot" /><div><b>{projectTitle}</b><small>{selected.label} · {code.split('\n').length} lines</small></div></div><div className="lk-workspace-actions"><button onClick={() => setFullscreen(!fullscreen)} title="Toggle workspace size"><Maximize2 size={15} /></button><button onClick={() => { setCode(''); setSummary('Your build summary will appear here.'); setView('code'); }} title="Clear code"><X size={15} /></button></div></div>
           {busy && !code ? <div className="lk-code-loading"><div className="lk-loader-orb"><Code2 size={28} /></div><b>Crafting your solution</b><span>Planning · writing · checking the details</span><div className="lk-loading-bars"><i /><i /><i /><i /></div></div> : <>
             <div className="lk-summary"><div><Sparkles size={16} /><b>Build summary</b></div><p>{summary}</p></div>
