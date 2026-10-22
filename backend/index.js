@@ -40,6 +40,59 @@ app.post('/api/images/generate', async (req, res) => {
   }
 });
 
+app.post('/api/research', async (req, res) => {
+  try {
+    const topic = typeof req.body?.topic === 'string' ? req.body.topic.trim().slice(0, 1200) : '';
+    if (!topic) return res.status(400).json({ error: 'Enter a topic to research.' });
+    const queries = [topic, topic + ' official research data', topic + ' latest developments'];
+    const sources = [];
+    for (const query of queries) {
+      try {
+        const response = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LokiBotResearch/1.0)' },
+          signal: AbortSignal.timeout(18000)
+        });
+        if (!response.ok) continue;
+        const html = await response.text();
+        const blocks = html.split('class="result__body"').slice(1);
+        for (const block of blocks) {
+          const link = block.match(/class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+          if (!link) continue;
+          let url = link[1];
+          try { const parsed = new URL(url, 'https://duckduckgo.com'); if (parsed.searchParams.has('uddg')) url = parsed.searchParams.get('uddg'); } catch {}
+          if (!/^https?:\/\//i.test(url) || /duckduckgo\.com/i.test(url) || sources.some(s => s.url === url)) continue;
+          const clean = value => String(value || '').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, ' ').trim();
+          const snippet = clean(block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/div>/i)?.[1] || '');
+          sources.push({ title: clean(link[2]).slice(0, 240), url: url.slice(0, 1500), snippet: snippet.slice(0, 700) });
+          if (sources.length >= 30) break;
+        }
+      } catch {}
+      if (sources.length >= 30) break;
+    }
+    if (!sources.length) return res.status(502).json({ error: 'Web search returned no readable results. Please try again.' });
+    let summary = 'Web research for: ' + topic + '\n\n' + sources.slice(0, 12).map((s, i) => '[' + (i + 1) + '] ' + s.title + '\n' + s.snippet + '\n' + s.url).join('\n\n');
+    if (apiKey) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'HTTP-Referer': process.env.APP_ORIGIN || 'https://github.com/elad113/Lokizbot', 'X-Title': 'LokiBot Deep Research' },
+          body: JSON.stringify({ model, temperature: 0.2, max_tokens: 3000, messages: [
+            { role: 'system', content: 'You are a careful research analyst. Answer using only the supplied web results. Compare evidence, distinguish confirmed facts from uncertainty, and use inline numbered citations [1], [2] matching the source list. Never invent facts or citations.' },
+            { role: 'user', content: 'Research question: ' + topic + '\n\nSources:\n' + sources.map((s, i) => '[' + (i + 1) + '] ' + s.title + '\nURL: ' + s.url + '\nExcerpt: ' + s.snippet).join('\n\n').slice(0, 30000) }
+          ] }),
+          signal: AbortSignal.timeout(45000)
+        });
+        const payload = await response.json().catch(() => ({}));
+        const answer = payload?.choices?.[0]?.message?.content;
+        if (response.ok && typeof answer === 'string' && answer.trim()) summary = answer.trim();
+      } catch {}
+    }
+    return res.json({ summary, sources, count: sources.length, researchedAt: new Date().toISOString() });
+  } catch (error) {
+    return res.status(500).json({ error: error instanceof Error ? error.message : 'Unexpected research error.' });
+  }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     if (!apiKey) return res.status(503).json({ error: 'AI backend is not configured. Add OPENROUTER_API_KEY (or GROQ_API_KEY) to the hosting service environment.' });
