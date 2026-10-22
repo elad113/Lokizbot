@@ -330,6 +330,7 @@ function App() {
           .map(m => ({ role: m.role, content: m.text })),
         personality,
         mode,
+        thinkingLevel, responseLength, replyLanguage, modelChoice,
         image: prepared
           ? { data: prepared.data, mimeType: prepared.mimeType }
           : undefined,
@@ -597,11 +598,8 @@ function App() {
             >
               <Menu size={20} />
             </button>
-            <div className="model-pill">
-              <span className="online-dot" />
-              <span>LokiBot</span>
-              <ChevronDown size={14} />
-            </div>
+            <label className="model-pill model-select-wrap" title="Choose LokiBot model"><span className="online-dot" /><select aria-label="AI model" value={modelChoice} onChange={e => { setModelChoice(e.target.value); localStorage.setItem('lokibot_model', e.target.value); }}><option value="lokizenith-3.2">Lokizenith 3.2</option><option value="zenith-3.5-ultra">Zenith 3.5 Ultra</option></select><ChevronDown size={14} /></label>
+            <label className="effort-select-wrap" title="Thinking effort"><Brain size={14} /><select aria-label="Thinking effort" value={thinkingLevel} onChange={e => { setThinkingLevel(e.target.value); localStorage.setItem('lokibot_thinking', e.target.value); }}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="extra-high">Extra High</option></select></label>
             {mode === 'learn' && (
               <span className="mode-label">
                 <GraduationCap size={14} /> Learning mode
