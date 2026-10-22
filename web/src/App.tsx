@@ -414,8 +414,10 @@ function App() {
         setFlashcards(data.flashcards);
         setCardIndex(0);
       }
-      if (data.quiz?.length) {
-        setQuiz(data.quiz);
+      const parsedTextQuiz = /quiz|test|hивון|חידון|בוחן|מבחן/i.test(userText) ? parseQuizFromText(reply) : null;
+      const readyQuiz = data.quiz?.length ? data.quiz : parsedTextQuiz;
+      if (readyQuiz?.length) {
+        setQuiz(readyQuiz);
         setQuizIndex(0);
         setQuizScore(0);
         setQuizChoice(null);
@@ -444,6 +446,18 @@ function App() {
   }
   function togglePin(id: string) { patchChat(id, c => ({ ...c, pinned: !c.pinned })); notify('Chat pin updated'); }
   function startImageGeneration() { const p = imagePrompt.trim(); if (!p) { notify('Describe the image first'); return; } void send('/image ' + p); }
+  function parseQuizFromText(text: string) {
+    const blocks = text.split(/(?=\*\*?שאלה\s*\d+|(?=\*\*?Question\s*\d+))/i).slice(1);
+    const parsed = blocks.map(block => {
+      const q = block.match(/(?:\*\*)?(?:שאלה|Question)\s*\d+\s*:?\*\*?\s*([^\n]+)/i)?.[1]?.trim();
+      const options = [...block.matchAll(/(?:^|\n)\s*[-•]?\s*([א-דA-D])\)\s*([^\n]+)/g)].map(m => ({key:m[1],value:m[2].trim()}));
+      const correct = block.match(/(?:תשובה\s*נכונה|correct\s*answer)\s*:?\s*([א-דA-D1-4])/i)?.[1];
+      if (!q || options.length < 2 || !correct) return null;
+      const answerIndex = /^[1-4]$/.test(correct) ? Number(correct)-1 : options.findIndex(o=>o.key.toLowerCase()===correct.toLowerCase());
+      return {q,options:options.map(o=>o.value.replace(/\s*[—–-].*$/,'')),answer:Math.max(0,answerIndex),why:(block.match(/(?:תשובה\s*נכונה[^—\n]*[—–-]|correct\s*answer[^—\n]*[—–-])\s*([^\n]+)/i)?.[1]||'').trim()};
+    }).filter(Boolean) as {q:string;options:string[];answer:number;why:string}[];
+    return parsed.length ? parsed : null;
+  }
   function extractResourceLinks(text: string) { return Array.from(new Set((text.match(/https?:\/\/[^\s)\]}>,]+/g) || []))).map(x => x.replace(/[.,;]+$/, '')).slice(0, 8); }
   function trustScore(text: string) { const links = extractResourceLinks(text); let score = links.length ? 78 + Math.min(18, links.length * 4) : 58; if (/I am not sure|I can’t verify|I cannot verify|may be outdated|לא בטוח|לא ניתן לאמת|ייתכן שטעיתי/i.test(text)) score -= 12; if (/medical|legal|financial|רפוא|משפטי|פיננסי/i.test(text)) score = Math.min(score, 72); return Math.max(20, Math.min(98, score)); }
   const filtered = chats.filter(c => c.title.toLowerCase().includes(query.toLowerCase()));
