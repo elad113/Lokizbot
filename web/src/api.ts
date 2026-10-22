@@ -28,7 +28,8 @@ async function request(path: string, body: any) {
     'Answer length: ' + (['short', 'medium', 'long'].includes(responseLength) ? responseLength : 'short') + '.',
     'Reasoning depth preference: ' + (['low', 'medium', 'high', 'extra-high'].includes(thinkingLevel) ? thinkingLevel : 'medium') + '.',
     'Reply language: ' + (['Hebrew', 'English', 'French', 'Spanish', 'Arabic'].includes(replyLanguage) ? 'always answer only in ' + replyLanguage : 'match the user language') + '.',
-    'If asked for quizzes or flashcards, provide clearly numbered questions/cards and answers.'
+    'If asked for quizzes or flashcards, provide clearly numbered questions/cards and answers.',
+    /recipe|meal plan|itinerary|travel plan|workout plan|checklist|schedule|compare|מתכון|מסלול|תוכנית אימון|רשימת משימות|השוואה/i.test(String(messages[messages.length - 1]?.content || '')) ? 'If a helpful interactive interface fits the request, return ONLY JSON: {"text":"short explanation","interface":{"type":"recipe|plan|checklist|comparison|steps","title":"title","subtitle":"summary","items":[{"title":"heading","description":"details","meta":"optional short label"}]}} with 3-12 items. For ordinary questions answer normally.' : ''
   ].filter(Boolean).join('\n');
 
   const contentMessages: any[] = [
@@ -68,7 +69,11 @@ async function request(path: string, body: any) {
     } else {
       const answer = data?.choices?.[0]?.message?.content;
       if (typeof answer === 'string' && answer.trim()) {
-        return { data: { text: answer.trim(), model: data?.model || 'openrouter/auto' } };
+        const trimmed = answer.trim();
+        const lastPrompt = String(messages[messages.length - 1]?.content || '');
+        const uiRequested = /recipe|meal plan|itinerary|travel plan|workout plan|checklist|schedule|compare|מתכון|מסלול|תוכנית אימון|רשימת משימות|השוואה/i.test(lastPrompt);
+        if (uiRequested) { try { const parsed = JSON.parse(trimmed); if (parsed && typeof parsed === 'object') return { data: { text: typeof parsed.text === 'string' ? parsed.text : 'Here is your guide.', interface: parsed.interface && typeof parsed.interface === 'object' ? { type: String(parsed.interface.type || 'plan'), title: String(parsed.interface.title || 'Your guide'), subtitle: String(parsed.interface.subtitle || ''), items: Array.isArray(parsed.interface.items) ? parsed.interface.items.slice(0, 12) : [] } : undefined, model: data?.model || 'openrouter/auto' } }; } catch {} }
+        return { data: { text: trimmed, model: data?.model || 'openrouter/auto' } };
       }
       openRouterError = 'OpenRouter returned an empty answer.';
     }
