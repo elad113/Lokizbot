@@ -1044,13 +1044,24 @@ function App() {
           ref={fileRef}
           hidden
           type="file"
-          accept="image/*"
-          onChange={e => {
+          accept="image/*,.txt,.md,.csv,.json,.xml,.html,.css,.js,.ts,.py,.java,.log"
+          onChange={async e => {
             const f = e.target.files?.[0];
-            if (f) {
+            e.target.value = '';
+            if (!f) return;
+            if (f.type.startsWith('image/')) {
               setAttachment(f);
               setPreview(URL.createObjectURL(f));
+              return;
             }
+            const textLike = /\.(txt|md|csv|json|xml|html|css|js|ts|py|java|log)$/i.test(f.name) || f.type.startsWith('text/');
+            if (!textLike) { notify('For now, attach an image or a text/code file (TXT, PDF is not supported yet).'); return; }
+            if (f.size > 500000) { notify('File is too large. Maximum text file size is 500 KB.'); return; }
+            try {
+              const content = await f.text();
+              setInput(old => (old ? old + '\\n\\n' : '') + 'Please read and analyze this attached file: ' + f.name + '\\n\\n--- FILE CONTENT ---\\n' + content + '\\n--- END FILE ---');
+              notify('File content added to the message');
+            } catch { notify('Could not read this file'); }
           }}
         />
       </main>
